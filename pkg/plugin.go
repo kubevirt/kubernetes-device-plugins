@@ -16,6 +16,7 @@ const (
 	resourceNamespace = "mpolednik.github.io/"
 )
 
+// DevicePlugin represents a gRPC server client/server.
 type DevicePlugin struct {
 	devs         []*pluginapi.Device
 	socket       string
@@ -24,6 +25,9 @@ type DevicePlugin struct {
 	resourceName string
 }
 
+var _ pluginapi.DevicePluginServer = &DevicePlugin{}
+
+// NewDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
 func NewDevicePlugin(deviceID string, deviceIDs []string) *DevicePlugin {
 	var devs []*pluginapi.Device
 
@@ -43,7 +47,7 @@ func NewDevicePlugin(deviceID string, deviceIDs []string) *DevicePlugin {
 	}
 }
 
-// Start starts the gRPC server of the device plugin
+// start starts the gRPC server of the device plugin.
 func (dpi *DevicePlugin) start() error {
 	glog.V(3).Info("Starting the DPI gRPC server")
 
@@ -76,7 +80,7 @@ func (dpi *DevicePlugin) start() error {
 	return nil
 }
 
-// Stop stops the gRPC server
+// stop stops the gRPC server
 func (dpi *DevicePlugin) Stop() error {
 	glog.V(3).Info("Stopping the DPI gRPC server")
 	dpi.server.Stop()
@@ -85,7 +89,7 @@ func (dpi *DevicePlugin) Stop() error {
 	return dpi.cleanup()
 }
 
-// Register registers the device plugin for the given resourceName with Kubelet.
+// register registers the device plugin (as gRPC client call) for the given resourceName with Kubelet DPI infrastructure.
 func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	glog.V(3).Info("Registering the DPI with Kubelet")
 
@@ -114,7 +118,7 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// ListAndWatch lists devices and update that list according to the Update call
+// ListAndWatch lists devices.
 func (dpi *DevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	var devs []*pluginapi.Device
 
@@ -135,6 +139,7 @@ func (dpi *DevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlug
 	}
 }
 
+// Allocate allocates a set of devices to be used by container runtime environment.
 func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	var response pluginapi.AllocateResponse
 
@@ -163,7 +168,7 @@ func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequ
 	return &response, nil
 }
 
-// Serve starts the gRPC server and register the device plugin to Kubelet
+// Serve starts the gRPC server and registers the device plugin to Kubelet
 func (dpi *DevicePlugin) Serve() error {
 	err := dpi.start()
 	if err != nil {
@@ -179,6 +184,7 @@ func (dpi *DevicePlugin) Serve() error {
 	return nil
 }
 
+// cleanup is a helper to remove DPI's socket.
 func (dpi *DevicePlugin) cleanup() error {
 	if err := os.Remove(dpi.socket); err != nil && !os.IsNotExist(err) {
 		glog.Errorf("Could not clean up socket %s: %s", dpi.socket, err)

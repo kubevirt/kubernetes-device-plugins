@@ -12,6 +12,7 @@ import (
 
 type DeviceMap map[string][]string
 
+// Discovery discovers all PCI devices within the system.
 func Discover() *DeviceMap {
 	var devices = make(DeviceMap)
 
@@ -38,6 +39,7 @@ func Discover() *DeviceMap {
 	return &devices
 }
 
+// getIOMMUGroup finds device's IOMMU group.
 func getIOMMUGroup(deviceAddress string) (int, error) {
 	iommuPath, err := os.Readlink(filepath.Join("/sys/bus/pci/devices", deviceAddress, "iommu_group"))
 	if err != nil {
@@ -56,6 +58,7 @@ func getIOMMUGroup(deviceAddress string) (int, error) {
 	return int(iommuGroup), nil
 }
 
+// unbindIOMMUGroup unbinds all devices within the IOMMU group from their drivers.
 func unbindIOMMUGroup(iommuGroup int) error {
 	glog.V(3).Info("Unbinding all devices in IOMMU group %d", iommuGroup)
 
@@ -72,6 +75,7 @@ func unbindIOMMUGroup(iommuGroup int) error {
 	return nil
 }
 
+// bindIOMMUGroup binds all devices within the IOMMU group to vfio-pci driver.
 func bindIOMMUGroup(iommuGroup int, driver string) error {
 	glog.V(3).Info("Binding all devices in IOMMU group %d", iommuGroup)
 
@@ -89,10 +93,12 @@ func bindIOMMUGroup(iommuGroup int, driver string) error {
 	return nil
 }
 
+// constructVFIOPath is a helper to create dev paths to VFIO endpoints (/dev/vfio/{0-9}+).
 func constructVFIOPath(iommuGroup int) string {
 	return filepath.Join("/dev/vfio", strconv.FormatInt(int64(iommuGroup), 10))
 }
 
+// getDeviceVendor fetches the vendor:device tuple from sysfs. This tupple is used as "device class" within this plugin.
 func getDeviceVendor(deviceAddress string) (string, string, error) {
 	data, err := ioutil.ReadFile(filepath.Join("/sys/bus/pci/devices", deviceAddress, "vendor"))
 	if err != nil {
@@ -111,6 +117,8 @@ func getDeviceVendor(deviceAddress string) (string, string, error) {
 	return vendorID, deviceID, nil
 }
 
+// formatDeviceID formats the device class so that the pods can request it in the limits.
+// Typically, vendor:device would be used, but the resource name may not contain ":".
 func formatDeviceID(vendorID string, deviceID string) string {
 	return strings.Join([]string{vendorID, deviceID}, "_")
 }

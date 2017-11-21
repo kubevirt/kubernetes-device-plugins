@@ -6,6 +6,7 @@ import (
 	"os/exec"
 )
 
+// loadedModules queries the running kernel's modules.
 func loadedModules() []string {
 	moduleDirs, err := ioutil.ReadDir("/sys/module")
 	if err != nil {
@@ -23,6 +24,7 @@ func loadedModules() []string {
 	return modules
 }
 
+// IsModuleLoaded tells whether given kernel module is loaded or not.
 func IsModuleLoaded(searchedModule string) bool {
 	modules := loadedModules()
 
@@ -35,6 +37,7 @@ func IsModuleLoaded(searchedModule string) bool {
 	return false
 }
 
+// LoadModule loads a kernel module (via modprobe).
 func LoadModule(module string) error {
 	cmd := exec.Command("modprobe", module)
 
@@ -47,6 +50,7 @@ func LoadModule(module string) error {
 	return nil
 }
 
+// UnloadModule unloads a kernel module (via rmmod).
 func UnloadModule(module string) error {
 	cmd := exec.Command("rmmod", module)
 
