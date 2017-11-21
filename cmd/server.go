@@ -171,9 +171,20 @@ func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequ
 		if err != nil {
 			return &response, err
 		}
+
 		vfioPath := pci.ConstructVFIOPath(iommuGroup)
-		glog.V(3).Infof("Got request to allocate device %s from IOMMU group %d (path %s)", id, iommuGroup, vfioPath)
+
+		pci.UnbindIOMMUGroup(iommuGroup)
+
+		err = pci.BindIOMMUGroup(iommuGroup, "vfio-pci")
+		if err != nil {
+			return &response, err
+		}
+
 		dev := new(pluginapi.DeviceSpec)
+		dev.HostPath = vfioPath
+		dev.ContainerPath = vfioPath
+		dev.Permissions = "rw"
 		response.Devices = append(response.Devices, dev)
 	}
 
@@ -207,6 +218,20 @@ func (dpi *DevicePlugin) cleanup() error {
 
 func main() {
 	flag.Parse()
+
+	// Let's start by making sure vfio_pci module is loaded. Without that, binds/unbinds will fail.
+	// Small caveat: the loaded module is called vfio_pci, but when it's being probed the name to use is vfio-pci!
+	if !pci.IsModuleLoaded("vfio_pci") {
+		err := pci.LoadModule("vfio-pci")
+		// If we were not able to load the module, we're out of luck.
+		if err != nil {
+			os.Exit(1)
+		}
+
+		// Defer within condition to avoid unloading previously loaded module.
+		// NOTE: this won't get called if program explicitly exits later. Cleanup manually in that case.
+		defer pci.UnloadModule("vfio-pci")
+	}
 
 	var plugins []*DevicePlugin
 	devices := pci.Discover()

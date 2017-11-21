@@ -56,8 +56,41 @@ func GetIOMMUGroup(deviceAddress string) (int, error) {
 	return int(iommuGroup), nil
 }
 
+func UnbindIOMMUGroup(iommuGroup int) error {
+	glog.V(3).Info("Unbinding all devices in IOMMU group %d", iommuGroup)
+
+	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
+
+	for _, dev := range devices {
+		glog.V(3).Infof("Unbinding device %s", dev.Name())
+		err = ioutil.WriteFile(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver/unbind"), []byte(dev.Name()), 0400)
+		if err != nil {
+			glog.V(3).Infof("Device %s not bound to any driver: %s", dev.Name(), err)
+		}
+	}
+
+	return nil
+}
+
+func BindIOMMUGroup(iommuGroup int, driver string) error {
+	glog.V(3).Info("Binding all devices in IOMMU group %d", iommuGroup)
+
+	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
+
+	for _, dev := range devices {
+		glog.V(3).Infof("Binding device %s to driver %s", dev.Name(), driver)
+		err = ioutil.WriteFile(filepath.Join("/sys/bus/pci/drivers", driver, "bind"), []byte(dev.Name()), 0400)
+		if err != nil {
+			glog.Errorf("Could not bind %s: %s", dev.Name(), err)
+			return err
+		}
+	}
+
+	return nil
+}
+
 func ConstructVFIOPath(iommuGroup int) string {
-	return filepath.Join("dev", "vfio", strconv.FormatInt(int64(iommuGroup), 10))
+	return filepath.Join("/dev/vfio", strconv.FormatInt(int64(iommuGroup), 10))
 }
 
 func getDeviceVendor(deviceAddress string) (string, string, error) {
