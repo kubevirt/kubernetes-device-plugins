@@ -38,7 +38,7 @@ func Discover() *DeviceMap {
 	return &devices
 }
 
-func GetIOMMUGroup(deviceAddress string) (int, error) {
+func getIOMMUGroup(deviceAddress string) (int, error) {
 	iommuPath, err := os.Readlink(filepath.Join("/sys/bus/pci/devices", deviceAddress, "iommu_group"))
 	if err != nil {
 		glog.Errorf("Could not read IOMMU group for device %s: %s", deviceAddress, err)
@@ -56,7 +56,7 @@ func GetIOMMUGroup(deviceAddress string) (int, error) {
 	return int(iommuGroup), nil
 }
 
-func UnbindIOMMUGroup(iommuGroup int) error {
+func unbindIOMMUGroup(iommuGroup int) error {
 	glog.V(3).Info("Unbinding all devices in IOMMU group %d", iommuGroup)
 
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
@@ -72,7 +72,7 @@ func UnbindIOMMUGroup(iommuGroup int) error {
 	return nil
 }
 
-func BindIOMMUGroup(iommuGroup int, driver string) error {
+func bindIOMMUGroup(iommuGroup int, driver string) error {
 	glog.V(3).Info("Binding all devices in IOMMU group %d", iommuGroup)
 
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
@@ -89,7 +89,7 @@ func BindIOMMUGroup(iommuGroup int, driver string) error {
 	return nil
 }
 
-func ConstructVFIOPath(iommuGroup int) string {
+func constructVFIOPath(iommuGroup int) string {
 	return filepath.Join("/dev/vfio", strconv.FormatInt(int64(iommuGroup), 10))
 }
 
