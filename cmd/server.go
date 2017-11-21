@@ -34,6 +34,36 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
+type DevicePluginManager struct {
+	plugins []*pci.DevicePlugin
+}
+
+func NewDevicePluginManager() *DevicePluginManager {
+	dpm := &DevicePluginManager{}
+
+	// We need a pci.DevicePlugin for *each* "device class" (fancy name for vendor:device tuple).
+	// That is a limitation of DPI architecture.
+	devices := pci.Discover()
+
+	for deviceClass, deviceIDs := range *devices {
+		dpm.plugins = append(dpm.plugins, pci.NewDevicePlugin(deviceClass, deviceIDs))
+	}
+
+	return dpm
+}
+
+func (dpm *DevicePluginManager) Start() {
+	for _, plugin := range dpm.plugins {
+		go plugin.Serve()
+	}
+}
+
+func (dpm *DevicePluginManager) Stop() {
+	for _, plugin := range dpm.plugins {
+		plugin.Stop()
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -51,18 +81,8 @@ func main() {
 		defer pci.UnloadModule("vfio-pci")
 	}
 
-	// We need a pci.DevicePlugin for *each* "device class" (fancy name for vendor:device tuple).
-	// That is a limitation of DPI architecture.
-	var plugins []*pci.DevicePlugin
-	devices := pci.Discover()
-
-	for deviceClass, deviceIDs := range *devices {
-		plugins = append(plugins, pci.NewDevicePlugin(deviceClass, deviceIDs))
-	}
-
-	for _, plugin := range plugins {
-		go plugin.Serve()
-	}
+	dpm := NewDevicePluginManager()
+	dpm.Start()
 
 	// Watch for changes in the sockets directory.
 	// TODO: do something sane when detecting changes.
@@ -85,10 +105,6 @@ L:
 			switch s {
 			default:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
-
-				for _, plugin := range plugins {
-					plugin.Stop()
-				}
 				break L
 			}
 		}
