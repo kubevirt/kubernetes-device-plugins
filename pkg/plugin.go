@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -26,6 +27,7 @@ type DevicePlugin struct {
 }
 
 var _ pluginapi.DevicePluginServer = &DevicePlugin{}
+var iommuMutex = &sync.Mutex{}
 
 // NewDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
 func NewDevicePlugin(deviceID string, deviceIDs []string) *DevicePlugin {
@@ -142,6 +144,14 @@ func (dpi *DevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlug
 // Allocate allocates a set of devices to be used by container runtime environment.
 func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	var response pluginapi.AllocateResponse
+
+	// The big IOMMU allocation mutex. Because the plugins run in concurrent fashion, and each
+	// plugin manages different device class, we need to ensure that IOMMU groups are not violated.
+	// Imagine devices 0000:00:01.0 from 1000:1000 and device 0000:00:02.0 from 2000:2000.
+	// If two containers were started, each requiring different device, and these devices were
+	// within a single IOMMU group, both containers may not start up.
+	iommuMutex.Lock()
+	defer iommuMutex.Unlock()
 
 	for _, id := range r.DevicesIDs {
 		iommuGroup, err := getIOMMUGroup(id)
