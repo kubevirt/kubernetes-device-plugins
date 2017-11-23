@@ -60,7 +60,7 @@ func getIOMMUGroup(deviceAddress string) (int, error) {
 
 // unbindIOMMUGroup unbinds all devices within the IOMMU group from their drivers.
 func unbindIOMMUGroup(iommuGroup int) error {
-	glog.V(3).Info("Unbinding all devices in IOMMU group %d", iommuGroup)
+	glog.V(3).Infof("Unbinding all devices in IOMMU group %d", iommuGroup)
 
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
 
@@ -77,7 +77,7 @@ func unbindIOMMUGroup(iommuGroup int) error {
 
 // bindIOMMUGroup binds all devices within the IOMMU group to vfio-pci driver.
 func bindIOMMUGroup(iommuGroup int, driver string) error {
-	glog.V(3).Info("Binding all devices in IOMMU group %d", iommuGroup)
+	glog.V(3).Infof("Binding all devices in IOMMU group %d", iommuGroup)
 
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
 
