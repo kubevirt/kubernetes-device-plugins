@@ -175,6 +175,14 @@ func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequ
 		response.Devices = append(response.Devices, dev)
 	}
 
+	// As somewhat special case, we also have to make sure that the pod has /dev/vfio/vfio path.
+	// TODO: make sure that having len(response.Devices) > len(r.DeviceIDs) is OK with DPI.
+	dev := new(pluginapi.DeviceSpec)
+	dev.HostPath = "/dev/vfio/vfio"
+	dev.ContainerPath = "/dev/vfio/vfio"
+	dev.Permissions = "rw"
+	response.Devices = append(response.Devices, dev)
+
 	return &response, nil
 }
 
