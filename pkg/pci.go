@@ -1,6 +1,7 @@
 package pci
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -58,35 +59,87 @@ func getIOMMUGroup(deviceAddress string) (int, error) {
 	return int(iommuGroup), nil
 }
 
-// unbindIOMMUGroup unbinds all devices within the IOMMU group from their drivers.
-func unbindIOMMUGroup(iommuGroup int) error {
-	glog.V(3).Infof("Unbinding all devices in IOMMU group %d", iommuGroup)
+type walkFunc func(deviceAddress string, err error) error
 
+// TODO: not really recursive, find better name?
+func walkIOMMUGroupDevices(iommuGroup int, walkFn walkFunc) error {
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
+	if err != nil {
+		return err
+	}
 
 	for _, dev := range devices {
-		glog.V(3).Infof("Unbinding device %s", dev.Name())
-		err = ioutil.WriteFile(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver/unbind"), []byte(dev.Name()), 0400)
+		err = walkFn(dev.Name(), err)
 		if err != nil {
-			glog.V(3).Infof("Device %s not bound to any driver: %s", dev.Name(), err)
+			return err
+		}
+	}
+
+	return err
+}
+
+func probeIOMMUGroup(iommuGroup int) error {
+	glog.V(3).Infof("Probing all devices in IOMMU group %d", iommuGroup)
+
+	err := walkIOMMUGroupDevices(iommuGroup, func(deviceAddress string, err error) error {
+		err = safeWrite(filepath.Join("/sys/bus/pci/drivers_probe"), []byte(deviceAddress), 0400)
+		if err != nil {
+			glog.Errorf("Could not probe device %d", deviceAddress)
+			return err
+		}
+
+		return nil
+	})
+	if err != nil {
+		glog.Error("Probing failed")
+		return err
+	}
+
+	return nil
+}
+
+// overrideIOMMUGroup binds all devices within the IOMMU group to vfio-pci driver.
+func overrideIOMMUGroup(iommuGroup int, driver string) error {
+	glog.V(3).Infof("Overriding all device drivers in IOMMU group %d to driver %s", iommuGroup, driver)
+
+	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
+	if err != nil {
+		return err
+	}
+
+	for _, dev := range devices {
+		glog.V(3).Infof("Overriding device %s driver to %s", dev.Name(), driver)
+		err := driverOverride(dev.Name(), driver)
+		if err != nil {
+			glog.Errorf("Could not override device %s with driver %s: %s", dev.Name(), driver, err)
+			return err
 		}
 	}
 
 	return nil
 }
 
-// bindIOMMUGroup binds all devices within the IOMMU group to vfio-pci driver.
-func bindIOMMUGroup(iommuGroup int, driver string) error {
-	glog.V(3).Infof("Binding all devices in IOMMU group %d", iommuGroup)
+// unbindIOMMUGroup unbinds all devices within the IOMMU group from their drivers.
+func unbindIOMMUGroup(iommuGroup int) error {
+	glog.V(3).Infof("Unbinding all devices in IOMMU group %d", iommuGroup)
 
 	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
+	if err != nil {
+		return err
+	}
 
 	for _, dev := range devices {
-		glog.V(3).Infof("Binding device %s to driver %s", dev.Name(), driver)
-		err = ioutil.WriteFile(filepath.Join("/sys/bus/pci/drivers", driver, "bind"), []byte(dev.Name()), 0400)
+		oldDriver, err := os.Readlink(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver"))
 		if err != nil {
-			glog.Errorf("Could not bind %s: %s", dev.Name(), err)
-			return err
+			glog.V(3).Infof("Device %s not bound to any driver: %s", dev.Name(), err)
+			continue
+		}
+		_, oldDriver = filepath.Split(oldDriver)
+		glog.V(3).Infof("Unbinding device %s (previous driver: %s)", dev.Name(), oldDriver)
+
+		err = safeWrite(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver/unbind"), []byte(dev.Name()), 0400)
+		if err != nil {
+			continue
 		}
 	}
 
@@ -121,4 +174,29 @@ func getDeviceVendor(deviceAddress string) (string, string, error) {
 // Typically, vendor:device would be used, but the resource name may not contain ":".
 func formatDeviceID(vendorID string, deviceID string) string {
 	return strings.Join([]string{vendorID, deviceID}, "_")
+}
+
+func driverOverride(deviceAddress string, driver string) error {
+	return safeWrite(filepath.Join("/sys/bus/pci/devices", deviceAddress, "driver_override"), []byte(driver), 0400)
+}
+
+func probe(deviceAddress string) error {
+	return safeWrite(filepath.Join("/sys/bus/pci/drivers_probe"), []byte(deviceAddress), 0400)
+}
+
+// safeWrite is like ioutil.WriteFile except without O_CREATE, O_TRUNC but with O_SYNC.
+func safeWrite(filename string, data []byte, perm os.FileMode) error {
+	f, err := os.OpenFile(filename, os.O_WRONLY|os.O_SYNC, perm)
+	if err != nil {
+		return err
+	}
+	n, err := f.Write(data)
+	if err == nil && n < len(data) {
+		err = io.ErrShortWrite
+	}
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+
+	return err
 }

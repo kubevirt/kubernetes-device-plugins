@@ -161,9 +161,17 @@ func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequ
 
 		vfioPath := constructVFIOPath(iommuGroup)
 
-		unbindIOMMUGroup(iommuGroup)
+		err = overrideIOMMUGroup(iommuGroup, "vfio-pci")
+		if err != nil {
+			return &response, err
+		}
 
-		err = bindIOMMUGroup(iommuGroup, "vfio-pci")
+		err = unbindIOMMUGroup(iommuGroup)
+		if err != nil {
+			return &response, err
+		}
+
+		err = probeIOMMUGroup(iommuGroup)
 		if err != nil {
 			return &response, err
 		}
