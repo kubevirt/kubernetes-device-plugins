@@ -83,6 +83,7 @@ func probeIOMMUGroup(iommuGroup int) error {
 
 	err := walkIOMMUGroupDevices(iommuGroup, func(deviceAddress string, err error) error {
 		err = safeWrite(filepath.Join("/sys/bus/pci/drivers_probe"), []byte(deviceAddress), 0400)
+		glog.V(3).Infof("Probing device %s", deviceAddress)
 		if err != nil {
 			glog.Errorf("Could not probe device %d", deviceAddress)
 			return err
@@ -102,18 +103,19 @@ func probeIOMMUGroup(iommuGroup int) error {
 func overrideIOMMUGroup(iommuGroup int, driver string) error {
 	glog.V(3).Infof("Overriding all device drivers in IOMMU group %d to driver %s", iommuGroup, driver)
 
-	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
-	if err != nil {
-		return err
-	}
-
-	for _, dev := range devices {
-		glog.V(3).Infof("Overriding device %s driver to %s", dev.Name(), driver)
-		err := driverOverride(dev.Name(), driver)
+	err := walkIOMMUGroupDevices(iommuGroup, func(deviceAddress string, err error) error {
+		glog.V(3).Infof("Overriding device %s driver to %s", deviceAddress, driver)
+		err = driverOverride(deviceAddress, driver)
 		if err != nil {
-			glog.Errorf("Could not override device %s with driver %s: %s", dev.Name(), driver, err)
+			glog.Errorf("Could not override device %s with driver %s: %s", deviceAddress, driver, err)
 			return err
 		}
+
+		return nil
+	})
+	if err != nil {
+		glog.Error("Overriding failed")
+		return err
 	}
 
 	return nil
@@ -123,24 +125,24 @@ func overrideIOMMUGroup(iommuGroup int, driver string) error {
 func unbindIOMMUGroup(iommuGroup int) error {
 	glog.V(3).Infof("Unbinding all devices in IOMMU group %d", iommuGroup)
 
-	devices, err := ioutil.ReadDir(filepath.Join("/sys/kernel/iommu_groups", strconv.FormatInt(int64(iommuGroup), 10), "devices"))
-	if err != nil {
-		return err
-	}
-
-	for _, dev := range devices {
-		oldDriver, err := os.Readlink(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver"))
+	err := walkIOMMUGroupDevices(iommuGroup, func(deviceAddress string, err error) error {
+		oldDriver, err := os.Readlink(filepath.Join("/sys/bus/pci/devices", deviceAddress, "driver"))
 		if err != nil {
-			glog.V(3).Infof("Device %s not bound to any driver: %s", dev.Name(), err)
-			continue
+			glog.V(3).Infof("Device %s not bound to any driver: %s", deviceAddress, err)
+			// Not important, log message is enough.
+			return nil
 		}
 		_, oldDriver = filepath.Split(oldDriver)
-		glog.V(3).Infof("Unbinding device %s (previous driver: %s)", dev.Name(), oldDriver)
+		glog.V(3).Infof("Unbinding device %s (previous driver: %s)", deviceAddress, oldDriver)
 
-		err = safeWrite(filepath.Join("/sys/bus/pci/devices", dev.Name(), "driver/unbind"), []byte(dev.Name()), 0400)
-		if err != nil {
-			continue
-		}
+		// We don't care about error here - it could be race in unbind.
+		safeWrite(filepath.Join("/sys/bus/pci/devices", deviceAddress, "driver/unbind"), []byte(deviceAddress), 0400)
+
+		return nil
+	})
+	if err != nil {
+		glog.Error("Overriding failed")
+		return err
 	}
 
 	return nil
