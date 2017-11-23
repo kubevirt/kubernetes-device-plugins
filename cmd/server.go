@@ -75,10 +75,6 @@ func main() {
 		if err != nil {
 			os.Exit(1)
 		}
-
-		// Defer within condition to avoid unloading previously loaded module.
-		// NOTE: this won't get called if program explicitly exits later. Cleanup manually in that case.
-		defer pci.UnloadModule("vfio-pci")
 	}
 
 	dpm := NewDevicePluginManager()
