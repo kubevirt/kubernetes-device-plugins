@@ -8,9 +8,17 @@ This software is a kubernetes [device plugin](https://kubernetes.io/docs/concept
 
 NOTE: This process is not finalized yet.
 
+### Plain binary
+
 ```bash
 cd cmd
 go build server.go
+```
+
+### Docker
+
+```bash
+docker build -t vfio:latest .
 ```
 
 ## Running
@@ -21,6 +29,11 @@ NOTE: This process is not finalized yet.
 ```bash
 cd cmd
 sudo ./server -v 3 -logtostderr
+```
+
+### Docker
+```
+docker run -it -v /dev:/dev -v /sys:/sys -v /lib/modules:/lib/modules -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins --privileged --cap-add=ALL vfio:latest /bin/bash
 ```
 
 ## As a DaemonSet
@@ -94,17 +107,3 @@ The scenario can be solved in several ways -
 The first approach is not feasible as IOMMU groups could be different on another node, e.g. `1` would contain `A` whereas `B` and `C` might be in different group(s).
 
 The second approach has an issue on it's own: when `a` or `b` is destroyed, the plugin is not informed of such event. Adding that capability to the device plugin API may not be desired as it implies a stateful nature of the device. Depending on other device plugin's state management needs, it could turn out to be the right solution.
-
-## Notes
-
-Building (from cmd/):
-
-```
-docker build -t vfio:latest .
-```
-
-Running:
-
-```
-docker run -it -v /dev:/dev -v /sys:/sys -v /lib/modules:/lib/modules -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins --privileged --cap-add=ALL vfio:latest /bin/bash
-```
