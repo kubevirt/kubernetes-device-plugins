@@ -41,8 +41,8 @@ func (pci PCILister) Discover() *dpm.DeviceMap {
 	return &devices
 }
 
-func (pci PCILister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePlugin {
-	return dpm.DevicePlugin(newDevicePlugin(deviceID, deviceIDs))
+func (pci PCILister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePluginInterface {
+	return dpm.DevicePluginInterface(newDevicePlugin(deviceID, deviceIDs))
 }
 
 // getIOMMUGroup finds device's IOMMU group.
