@@ -30,7 +30,7 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg"
+	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/pci"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
