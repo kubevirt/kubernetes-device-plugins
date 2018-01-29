@@ -36,10 +36,13 @@ import (
 
 type DevicePluginManager struct {
 	plugins []*pci.DevicePlugin
+	stopCh  chan struct{}
 }
 
-func NewDevicePluginManager() *DevicePluginManager {
-	dpm := &DevicePluginManager{}
+func NewDevicePluginManager(stopCh chan struct{}) *DevicePluginManager {
+	dpm := &DevicePluginManager{
+		stopCh: stopCh,
+	}
 
 	// We need a pci.DevicePlugin for *each* "device class" (fancy name for vendor:device tuple).
 	// That is a limitation of DPI architecture.
@@ -52,15 +55,33 @@ func NewDevicePluginManager() *DevicePluginManager {
 	return dpm
 }
 
-func (dpm *DevicePluginManager) Start() {
+func (dpm *DevicePluginManager) Run() {
 	for _, plugin := range dpm.plugins {
 		go plugin.Serve()
 	}
+
+	<-dpm.stopCh
+	dpm.stop()
 }
 
-func (dpm *DevicePluginManager) Stop() {
+func (dpm *DevicePluginManager) stop() {
 	for _, plugin := range dpm.plugins {
 		plugin.Stop()
+	}
+}
+
+func handleSignals(stopCh chan struct{}, errors chan error, sigs chan os.Signal) {
+	for {
+		select {
+		case err := <-errors:
+			glog.V(3).Infof("inotify: %s", err)
+		case s := <-sigs:
+			switch s {
+			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
+				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
+				close(stopCh)
+			}
+		}
 	}
 }
 
@@ -77,32 +98,18 @@ func main() {
 		}
 	}
 
-	dpm := NewDevicePluginManager()
-	dpm.Start()
-
 	// Watch for changes in the sockets directory.
-	// TODO: do something sane when detecting changes.
 	watcher, _ := fsnotify.NewWatcher()
 	defer watcher.Close()
 	watcher.Add(pluginapi.DevicePluginPath)
 
 	// And setup a signal handler.
-	// TODO: do something sane when we catch signals.
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	stopCh := make(chan struct{})
 
-	// TODO: this needs heavy improvement! Works barely enough for POC.
-L:
-	for {
-		select {
-		case err := <-watcher.Errors:
-			glog.V(3).Infof("inotify: %s", err)
-		case s := <-sigs:
-			switch s {
-			default:
-				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
-				break L
-			}
-		}
-	}
+	go handleSignals(stopCh, watcher.Errors, sigs)
+
+	dpm := NewDevicePluginManager(stopCh)
+	dpm.Run()
 }
