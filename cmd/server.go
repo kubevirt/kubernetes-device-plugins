@@ -30,45 +30,10 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
+	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
 	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/pci"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
-
-type DevicePluginManager struct {
-	plugins []*pci.DevicePlugin
-	stopCh  chan struct{}
-}
-
-func NewDevicePluginManager(stopCh chan struct{}) *DevicePluginManager {
-	dpm := &DevicePluginManager{
-		stopCh: stopCh,
-	}
-
-	// We need a pci.DevicePlugin for *each* "device class" (fancy name for vendor:device tuple).
-	// That is a limitation of DPI architecture.
-	devices := pci.Discover()
-
-	for deviceClass, deviceIDs := range *devices {
-		dpm.plugins = append(dpm.plugins, pci.NewDevicePlugin(deviceClass, deviceIDs))
-	}
-
-	return dpm
-}
-
-func (dpm *DevicePluginManager) Run() {
-	for _, plugin := range dpm.plugins {
-		go plugin.Serve()
-	}
-
-	<-dpm.stopCh
-	dpm.stop()
-}
-
-func (dpm *DevicePluginManager) stop() {
-	for _, plugin := range dpm.plugins {
-		plugin.Stop()
-	}
-}
 
 func handleSignals(stopCh chan struct{}, errors chan error, sigs chan os.Signal) {
 	for {
@@ -110,6 +75,6 @@ func main() {
 
 	go handleSignals(stopCh, watcher.Errors, sigs)
 
-	dpm := NewDevicePluginManager(stopCh)
-	dpm.Run()
+	manager := dpm.NewDevicePluginManager(stopCh, pci.PCILister{})
+	manager.Run()
 }
