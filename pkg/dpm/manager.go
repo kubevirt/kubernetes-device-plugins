@@ -1,7 +1,7 @@
 package dpm
 
 type DevicePluginManager struct {
-	plugins []DevicePlugin
+	plugins []DevicePluginInterface
 	lister  DeviceLister
 	stopCh  chan struct{}
 }
