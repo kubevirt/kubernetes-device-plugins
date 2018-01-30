@@ -1,15 +1,31 @@
 package dpm
 
+import (
+	"os"
+	"os/signal"
+	"syscall"
+
+	"github.com/golang/glog"
+)
+
 type DevicePluginManager struct {
-	plugins []DevicePluginInterface
-	lister  DeviceLister
-	stopCh  chan struct{}
+	plugins  []DevicePluginInterface
+	lister   DeviceLister
+	stopCh   chan struct{}
+	signalCh chan os.Signal
 }
 
-func NewDevicePluginManager(stopCh chan struct{}, lister DeviceLister) *DevicePluginManager {
+func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
+	stopCh := make(chan struct{})
+
 	dpm := &DevicePluginManager{
-		stopCh: stopCh,
+		stopCh:   stopCh,
+		signalCh: sigs,
 	}
+
+	go dpm.handleSignals()
 
 	devices := lister.Discover()
 
@@ -32,5 +48,18 @@ func (dpm *DevicePluginManager) Run() {
 func (dpm *DevicePluginManager) stop() {
 	for _, plugin := range dpm.plugins {
 		plugin.Stop()
+	}
+}
+
+func (dpm *DevicePluginManager) handleSignals() {
+	for {
+		select {
+		case s := <-dpm.signalCh:
+			switch s {
+			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
+				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
+				close(dpm.stopCh)
+			}
+		}
 	}
 }
