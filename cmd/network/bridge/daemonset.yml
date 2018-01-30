@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    name: device-plugin-network-bridge
+  name: device-plugin-network-bridge
+spec:
+  selector:
+    matchLabels:
+      name: device-plugin-network-bridge
+  template:
+    metadata:
+      labels:
+        name: device-plugin-network-bridge
+    spec:
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: device-plugin-network-bridge
+        image: phoracek/device-plugin-network-bridge:latest
+        securityContext:
+          privileged: true
+        env:
+        - name: BRIDGES
+          value: "br0"
+        volumeMounts:
+          - name: var-run
+            mountPath: /var/run
+          - name: device-plugin
+            mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: var-run
+          hostPath:
+            path: /var/run
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins

@@ -19,6 +19,8 @@ Each plugin may have it's own build instructions in the linked README.md.
 
 * [VFIO](docs/vfio/README.md)
 * [KVM](docs/kvm/README.md)
+* Network
+  * [Bridge](docs/network/bridge/README.md)
 
 ## Creating Device Plugin
 
