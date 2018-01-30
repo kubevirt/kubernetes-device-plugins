@@ -1,12 +1,12 @@
 PLUGINS = $(sort \
-		  $(subst /, -, \
-		  $(patsubst cmd/%/, %, \
+		  $(subst /,-,\
+		  $(patsubst cmd/%/,%,\
 		  $(dir \
 		  $(shell find cmd/ -type f -name '*.go')))))
 
 DOCKERFILES = $(sort \
-			  $(subst /, -, \
-			  $(patsubst cmd/%/, %, \
+			  $(subst /,-,\
+			  $(patsubst cmd/%/,%,\
 			  $(dir \
 			  $(shell find cmd/ -type f -name 'Dockerfile')))))
 
