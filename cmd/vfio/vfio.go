@@ -25,30 +25,10 @@ package main
 import (
 	"flag"
 	"os"
-	"os/signal"
-	"syscall"
 
-	"github.com/fsnotify/fsnotify"
-	"github.com/golang/glog"
 	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
 	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/pci"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
-
-func handleSignals(stopCh chan struct{}, errors chan error, sigs chan os.Signal) {
-	for {
-		select {
-		case err := <-errors:
-			glog.V(3).Infof("inotify: %s", err)
-		case s := <-sigs:
-			switch s {
-			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
-				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
-				close(stopCh)
-			}
-		}
-	}
-}
 
 func main() {
 	flag.Parse()
@@ -63,18 +43,6 @@ func main() {
 		}
 	}
 
-	// Watch for changes in the sockets directory.
-	watcher, _ := fsnotify.NewWatcher()
-	defer watcher.Close()
-	watcher.Add(pluginapi.DevicePluginPath)
-
-	// And setup a signal handler.
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-	stopCh := make(chan struct{})
-
-	go handleSignals(stopCh, watcher.Errors, sigs)
-
-	manager := dpm.NewDevicePluginManager(stopCh, pci.PCILister{})
+	manager := dpm.NewDevicePluginManager(pci.PCILister{})
 	manager.Run()
 }
