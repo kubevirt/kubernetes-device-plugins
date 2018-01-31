@@ -11,8 +11,8 @@ NOTE: This process is not finalized yet.
 ### Plain binary
 
 ```bash
-cd cmd
-go build server.go
+cd cmd/vfio
+go build .
 ```
 
 ### Docker
@@ -27,13 +27,14 @@ NOTE: This process is not finalized yet.
 
 ### Locally
 ```bash
-cd cmd
-sudo ./server -v 3 -logtostderr
+cd cmd/vfio
+sudo ./vfio -v 3 -logtostderr
 ```
 
 ### Docker
 ```
 docker run -it -v /dev:/dev -v /sys:/sys -v /lib/modules:/lib/modules -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins --privileged --cap-add=ALL vfio:latest /bin/bash
+(in docker image) ./vfio -v 3 -logtostderr
 ```
 
 ## As a DaemonSet

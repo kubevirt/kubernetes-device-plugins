@@ -17,7 +17,9 @@ handling for common patterns.
 
 ## Building & Deploying
 
-TODO :)
+Each plugin may have it's own build instructions.
+
+* [VFIO](docs/vfio/README.md)
 
 ## Creating Device Plugin
 
