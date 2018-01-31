@@ -17,14 +17,11 @@ const (
 	resourceNamespace = "mpolednik.github.io/"
 )
 
-type Message struct{}
-
 type KVMLister struct{}
 
 type KVMDevicePlugin struct {
 	dpm.DevicePlugin
 	counter int
-	update  chan Message
 }
 
 // Discovery discovers all KVM devices within the system.
@@ -56,13 +53,13 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
 	glog.V(3).Infof("Creating device plugin %s, initial devices %v", deviceID, devs)
 	ret := &KVMDevicePlugin{
 		counter: 0,
-		update:  make(chan Message),
 	}
 	ret.DevicePlugin = dpm.DevicePlugin{
 		Socket:       pluginapi.DevicePluginPath + deviceID,
 		Devs:         devs,
 		ResourceName: resourceNamespace + deviceID,
 		StopCh:       make(chan interface{}),
+		Update:       make(chan dpm.Message),
 	}
 	ret.DevicePlugin.Deps = ret
 
@@ -75,7 +72,7 @@ func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DeviceP
 
 	for {
 		select {
-		case <-dpi.update:
+		case <-dpi.DevicePlugin.Update:
 			s.Send(&pluginapi.ListAndWatchResponse{Devices: dpi.DevicePlugin.Devs})
 		case <-dpi.StopCh:
 			return nil
@@ -93,7 +90,7 @@ func (dpi *KVMDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateR
 		Health: pluginapi.Healthy,
 	})
 	dpi.counter += 1
-	dpi.update <- Message{}
+	dpi.DevicePlugin.Update <- dpm.Message{}
 
 	dev := new(pluginapi.DeviceSpec)
 	dev.HostPath = "/dev/kvm"
