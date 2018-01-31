@@ -13,7 +13,7 @@ handling for common patterns.
 
 ## Current Device Plugins
 
-[VFIO](docs/vfio/README.md)
+* [VFIO](docs/vfio/README.md)
 
 ## Building & Deploying
 
