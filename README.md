@@ -13,13 +13,10 @@ handling for common patterns.
 
 ## Current Device Plugins
 
-* [VFIO](docs/vfio/README.md)
-
-## Building & Deploying
-
-Each plugin may have it's own build instructions.
+Each plugin may have it's own build instructions in the linked README.md.
 
 * [VFIO](docs/vfio/README.md)
+* [KVM](docs/kvm/README.md)
 
 ## Creating Device Plugin
 
