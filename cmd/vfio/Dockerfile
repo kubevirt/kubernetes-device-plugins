@@ -2,6 +2,6 @@ FROM fedora:27
 
 RUN yum -y install kmod
 
-COPY cmd /cmd
+COPY vfio /vfio
 
-CMD ["/cmd"]
+CMD ["/vfio"]
