@@ -13,6 +13,8 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
+type Message struct{}
+
 type DevicePluginInterface interface {
 	pluginapi.DevicePluginServer
 	Run() error
@@ -27,6 +29,7 @@ type DevicePlugin struct {
 	Server       *grpc.Server
 	ResourceName string
 	Deps         DevicePluginInterface
+	Update       chan Message
 }
 
 // start starts the gRPC server of the device plugin.
