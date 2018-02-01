@@ -4,9 +4,10 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+
+	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (

@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/kvm"
+	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
+	"kubevirt.io/kubernetes-device-plugins/pkg/kvm"
 )
 
 func main() {

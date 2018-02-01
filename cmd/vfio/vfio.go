@@ -26,8 +26,8 @@ import (
 	"flag"
 	"os"
 
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/pci"
+	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
+	"kubevirt.io/kubernetes-device-plugins/pkg/pci"
 )
 
 func main() {

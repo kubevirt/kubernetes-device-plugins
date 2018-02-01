@@ -8,7 +8,7 @@ import (
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 
-	"github.com/mpolednik/linux-vfio-k8s-dpi/pkg/dpm"
+	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (
