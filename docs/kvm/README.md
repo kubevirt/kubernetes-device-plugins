@@ -48,7 +48,7 @@ Node description:
 ```yaml
 Capacity:
  ...
- mpolednik.github.io/kvm:  3
+ devices.kubevirt.io/kvm:  3
  ...
 ```
 
@@ -61,9 +61,9 @@ spec:
     ...
     resources:
       requests:
-              mpolednik.github.io/kvm: 1
+              devices.kubevirt.io/kvm: 1
       limits:
-              mpolednik.github.io/kvm: 1
+              devices.kubevirt.io/kvm: 1
 ```
 
 ## Issues

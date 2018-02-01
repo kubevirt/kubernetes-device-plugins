@@ -14,7 +14,7 @@ import (
 const (
 	KVMPath           = "/dev/kvm"
 	KVMName           = "kvm"
-	resourceNamespace = "mpolednik.github.io/"
+	resourceNamespace = "devices.kubevirt.io/"
 )
 
 type KVMLister struct{}
