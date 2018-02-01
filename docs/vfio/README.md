@@ -48,11 +48,11 @@ Node description:
 ```yaml
 Capacity:
  ...
- mpolednik.github.io/10b5_8747:  3
- mpolednik.github.io/10de_0fbc:  1
- mpolednik.github.io/10de_13ba:  1
- mpolednik.github.io/10de_13f2:  2
- mpolednik.github.io/10de_1bb3:  1
+ devices.kubevirt.io/10b5_8747:  3
+ devices.kubevirt.io/10de_0fbc:  1
+ devices.kubevirt.io/10de_13ba:  1
+ devices.kubevirt.io/10de_13f2:  2
+ devices.kubevirt.io/10de_1bb3:  1
  ...
 ```
 
@@ -67,9 +67,9 @@ spec:
     ...
     resources:
       requests:
-              mpolednik.github.io/10de_1bb3: 1
+              devices.kubevirt.io/10de_1bb3: 1
       limits:
-              mpolednik.github.io/10de_1bb3: 1
+              devices.kubevirt.io/10de_1bb3: 1
 ```
 
 Pod device assignment is derived from device plugin requirements. Snippet above would make sure that

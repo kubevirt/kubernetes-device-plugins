@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	resourceNamespace = "mpolednik.github.io/"
+	resourceNamespace = "devices.kubevirt.io/"
 )
 
 // DevicePlugin represents a gRPC server client/server.
