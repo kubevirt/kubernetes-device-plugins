@@ -38,7 +38,7 @@ func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
 
 func (dpm *DevicePluginManager) Run() {
 	for _, plugin := range dpm.plugins {
-		go plugin.Run()
+		go plugin.Start()
 	}
 
 	<-dpm.stopCh
