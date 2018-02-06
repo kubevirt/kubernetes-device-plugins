@@ -17,7 +17,7 @@ type Message struct{}
 
 type DevicePluginInterface interface {
 	pluginapi.DevicePluginServer
-	Run() error
+	Start() error
 	Stop() error
 }
 
@@ -33,8 +33,8 @@ type DevicePlugin struct {
 	Running      bool
 }
 
-// start starts the gRPC server of the device plugin.
-func (dpi *DevicePlugin) start() error {
+// serve starts the gRPC server of the device plugin.
+func (dpi *DevicePlugin) serve() error {
 	glog.V(3).Info("Starting the DPI gRPC server")
 
 	err := dpi.cleanup()
@@ -110,9 +110,9 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// Serve starts the gRPC server and registers the device plugin to Kubelet
-func (dpi *DevicePlugin) Run() error {
-	err := dpi.start()
+// Start starts the gRPC server and registers the device plugin to Kubelet
+func (dpi *DevicePlugin) Start() error {
+	err := dpi.serve()
 	if err != nil {
 		return err
 	}
