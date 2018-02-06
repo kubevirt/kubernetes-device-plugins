@@ -30,6 +30,7 @@ type DevicePlugin struct {
 	ResourceName string
 	Deps         DevicePluginInterface
 	Update       chan Message
+	Running      bool
 }
 
 // start starts the gRPC server of the device plugin.
@@ -52,6 +53,7 @@ func (dpi *DevicePlugin) start() error {
 	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.Deps)
 
 	go dpi.Server.Serve(sock)
+	dpi.Running = true
 	glog.V(3).Info("Serving requests...")
 	// Wait till grpc server is ready.
 	for i := 0; i < 10; i++ {
@@ -67,9 +69,14 @@ func (dpi *DevicePlugin) start() error {
 
 // stop stops the gRPC server
 func (dpi *DevicePlugin) Stop() error {
+	if !dpi.Running {
+		return nil
+	}
+
 	glog.V(3).Info("Stopping the DPI gRPC server")
 	dpi.Server.Stop()
 	close(dpi.StopCh)
+	dpi.Running = false
 
 	return dpi.cleanup()
 }
