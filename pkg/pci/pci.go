@@ -13,6 +13,7 @@ import (
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
+// PCILister is the object responsible for discovering initial pool of devices and their allocation.
 type PCILister struct{}
 
 // Discovery discovers all PCI devices within the system.
@@ -42,6 +43,7 @@ func (pci PCILister) Discover() *dpm.DeviceMap {
 	return &devices
 }
 
+// newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
 func (pci PCILister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePluginInterface {
 	return dpm.DevicePluginInterface(newDevicePlugin(deviceID, deviceIDs))
 }
@@ -84,6 +86,7 @@ func walkIOMMUGroupDevices(iommuGroup int, walkFn walkFunc) error {
 	return err
 }
 
+// probeIOMMUGroup probes device drivers within the same IOMMU group.
 func probeIOMMUGroup(iommuGroup int) error {
 	glog.V(3).Infof("Probing all devices in IOMMU group %d", iommuGroup)
 
@@ -184,10 +187,12 @@ func formatDeviceID(vendorID string, deviceID string) string {
 	return strings.Join([]string{vendorID, deviceID}, "_")
 }
 
+// driverOverride uses driver_override sysfs endpoint to temporarily change device driver.
 func driverOverride(deviceAddress string, driver string) error {
 	return safeWrite(filepath.Join("/sys/bus/pci/devices", deviceAddress, "driver_override"), []byte(driver), 0400)
 }
 
+// probe probes the device driver.
 func probe(deviceAddress string) error {
 	return safeWrite(filepath.Join("/sys/bus/pci/drivers_probe"), []byte(deviceAddress), 0400)
 }
