@@ -16,6 +16,8 @@ import (
 
 type Message struct{}
 
+// DevicePluginInterface is the interface that each device plugin implementation must implement.
+// Some function are provided by DevicePlugin structure, so only those missing need to be implemented.
 type DevicePluginInterface interface {
 	pluginapi.DevicePluginServer
 	Start() error
@@ -67,7 +69,7 @@ func (dpi *DevicePlugin) serve() error {
 	return nil
 }
 
-// stop stops the gRPC server
+// Stop stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
 func (dpi *DevicePlugin) Stop() error {
 	if !dpi.Running {
 		glog.V(3).Info("Tried to stop stopped DPI")
@@ -110,11 +112,13 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// Start starts the gRPC server and registers the device plugin to Kubelet
+// Start starts the gRPC server and registers the device plugin to Kubelet. Calling Start on started object is NOOP.
 func (dpi *DevicePlugin) Start() error {
+	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
 	dpi.Starting.Lock()
 	defer dpi.Starting.Unlock()
 
+	// If we've acquired the lock after waiting for the Start to finish, we don't need to do anything (as long as the plugin is running).
 	if dpi.Running {
 		return nil
 	}

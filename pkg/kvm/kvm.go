@@ -17,8 +17,10 @@ const (
 	resourceNamespace = "devices.kubevirt.io/"
 )
 
+// KVMLister is the object responsible for discovering initial pool of devices and their allocation.
 type KVMLister struct{}
 
+// KVMDevicePlugin is an implementation of DevicePlugin that is capable of exposing /dev/kvm to containers.
 type KVMDevicePlugin struct {
 	dpm.DevicePlugin
 	counter int
@@ -36,10 +38,12 @@ func (kvm KVMLister) Discover() *dpm.DeviceMap {
 	return &devices
 }
 
+// newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
 func (kvm KVMLister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePluginInterface {
 	return dpm.DevicePluginInterface(newDevicePlugin(deviceID, deviceIDs))
 }
 
+// newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
 func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
 	var devs []*pluginapi.Device
 
@@ -65,7 +69,7 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
 	return ret
 }
 
-// ListAndWatch lists devices.
+// ListAndWatch sends gRPC stream of devices.
 func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: dpi.DevicePlugin.Devs})
 
