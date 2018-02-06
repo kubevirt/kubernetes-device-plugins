@@ -4,6 +4,7 @@ import (
 	"net"
 	"os"
 	"path"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -25,12 +26,12 @@ type DevicePluginInterface interface {
 type DevicePlugin struct {
 	Devs         []*pluginapi.Device
 	Socket       string
-	StopCh       chan interface{}
 	Server       *grpc.Server
 	ResourceName string
 	Deps         DevicePluginInterface
 	Update       chan Message
 	Running      bool
+	Starting     sync.Mutex
 }
 
 // serve starts the gRPC server of the device plugin.
@@ -53,7 +54,6 @@ func (dpi *DevicePlugin) serve() error {
 	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.Deps)
 
 	go dpi.Server.Serve(sock)
-	dpi.Running = true
 	glog.V(3).Info("Serving requests...")
 	// Wait till grpc server is ready.
 	for i := 0; i < 10; i++ {
@@ -70,12 +70,12 @@ func (dpi *DevicePlugin) serve() error {
 // stop stops the gRPC server
 func (dpi *DevicePlugin) Stop() error {
 	if !dpi.Running {
+		glog.V(3).Info("Tried to stop stopped DPI")
 		return nil
 	}
 
 	glog.V(3).Info("Stopping the DPI gRPC server")
 	dpi.Server.Stop()
-	close(dpi.StopCh)
 	dpi.Running = false
 
 	return dpi.cleanup()
@@ -112,10 +112,19 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 
 // Start starts the gRPC server and registers the device plugin to Kubelet
 func (dpi *DevicePlugin) Start() error {
+	dpi.Starting.Lock()
+	defer dpi.Starting.Unlock()
+
+	if dpi.Running {
+		return nil
+	}
+
 	err := dpi.serve()
 	if err != nil {
 		return err
 	}
+
+	dpi.Running = true
 
 	err = dpi.register(pluginapi.KubeletSocket, dpi.ResourceName)
 	if err != nil {

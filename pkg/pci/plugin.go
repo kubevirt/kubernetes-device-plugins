@@ -38,7 +38,6 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *VFIODevicePlugin {
 			Socket:       pluginapi.DevicePluginPath + deviceID,
 			Devs:         devs,
 			ResourceName: resourceNamespace + deviceID,
-			StopCh:       make(chan interface{}),
 		},
 	}
 	ret.DevicePlugin.Deps = ret
@@ -60,10 +59,7 @@ func (dpi *VFIODevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.Device
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: devs})
 
 	for {
-		select {
-		case <-dpi.StopCh:
-			return nil
-		}
+		select {}
 	}
 }
 

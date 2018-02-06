@@ -58,7 +58,6 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
 		Socket:       pluginapi.DevicePluginPath + deviceID,
 		Devs:         devs,
 		ResourceName: resourceNamespace + deviceID,
-		StopCh:       make(chan interface{}),
 		Update:       make(chan dpm.Message),
 	}
 	ret.DevicePlugin.Deps = ret
@@ -74,8 +73,6 @@ func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DeviceP
 		select {
 		case <-dpi.DevicePlugin.Update:
 			s.Send(&pluginapi.ListAndWatchResponse{Devices: dpi.DevicePlugin.Devs})
-		case <-dpi.StopCh:
-			return nil
 		}
 	}
 }

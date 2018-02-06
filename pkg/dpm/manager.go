@@ -5,14 +5,18 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
+
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
 type DevicePluginManager struct {
-	plugins  []DevicePluginInterface
-	lister   DeviceLister
-	stopCh   chan struct{}
-	signalCh chan os.Signal
+	plugins   []DevicePluginInterface
+	lister    DeviceLister
+	stopCh    chan struct{}
+	signalCh  chan os.Signal
+	fsWatcher *fsnotify.Watcher
 }
 
 func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
@@ -20,9 +24,13 @@ func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 	stopCh := make(chan struct{})
 
+	fsWatcher, _ := fsnotify.NewWatcher()
+	fsWatcher.Add(pluginapi.DevicePluginPath)
+
 	dpm := &DevicePluginManager{
-		stopCh:   stopCh,
-		signalCh: sigs,
+		stopCh:    stopCh,
+		signalCh:  sigs,
+		fsWatcher: fsWatcher,
 	}
 
 	go dpm.handleSignals()
@@ -37,15 +45,20 @@ func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
 }
 
 func (dpm *DevicePluginManager) Run() {
+	defer dpm.fsWatcher.Close()
+	dpm.startPlugins()
+
+	<-dpm.stopCh
+	dpm.stopPlugins()
+}
+
+func (dpm *DevicePluginManager) startPlugins() {
 	for _, plugin := range dpm.plugins {
 		go plugin.Start()
 	}
-
-	<-dpm.stopCh
-	dpm.stop()
 }
 
-func (dpm *DevicePluginManager) stop() {
+func (dpm *DevicePluginManager) stopPlugins() {
 	for _, plugin := range dpm.plugins {
 		plugin.Stop()
 	}
@@ -59,6 +72,15 @@ func (dpm *DevicePluginManager) handleSignals() {
 			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
 				close(dpm.stopCh)
+			}
+		case event := <-dpm.fsWatcher.Events:
+			if event.Name == pluginapi.KubeletSocket {
+				if event.Op&fsnotify.Create == fsnotify.Create {
+					dpm.startPlugins()
+				}
+				if event.Op&fsnotify.Remove == fsnotify.Remove {
+					dpm.stopPlugins()
+				}
 			}
 		}
 	}
