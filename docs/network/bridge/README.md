@@ -1,36 +1,41 @@
 # Network Bridge Device Plugin
 
-POC. WIP.
+This device plugin allows user to attach pods to bridges running on nodes.
 
-## Build
+## Usage
 
-```
-cd cmd/network/bridge
-go build
-```
-
-## Run
-
-Device plugin running.
+User must specify list of bridges that should be exposed to pods. Please note,
+that bridges must be manually precreated on all nodes.
 
 ```
-BRIDGES="br0,br1" ./bridge -v 3 -logtostderr
+kubectl create configmap devicepluginnetworkbridge --from-literal=bridges="br0,br1"
 ```
 
-## Use
-
-Create a pod requesting connection to the bridge.
+Deploy the device plugin using daemon set.
 
 ```
+kubectl create -f cmd/network/bridge/daemonset.yml
+```
+
+Define a pod requesting secondary interface connected to bridge `br0`.
+
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: demo-pod3
+  name: demo-pod
 spec:
   containers:
-    - name: nginx
-      image: nginx:1.7.9
-      resources:
-        limits:
-          bridge.network.kubevirt.io/br0: 1
+  - name: nginx
+    image: nginx:latest
+    resources:
+      limits:
+        bridge.network.kubevirt.io/br0: 1
 ```
+
+```
+kubectl create -f pod-example.yml
+```
+
+Once the pod is created is should contain a secondary interface connected to
+the bridge.

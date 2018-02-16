@@ -17,12 +17,15 @@ spec:
       hostPID: true
       containers:
       - name: device-plugin-network-bridge
-        image: phoracek/device-plugin-network-bridge:latest
+        image: quay.io/kubevirt/device-plugin-network-bridge:latest
         securityContext:
           privileged: true
         env:
         - name: BRIDGES
-          value: "br0"
+          valueFrom:
+            configMapKeyRef:
+             name: devicepluginnetworkbridge
+             key: bridges
         volumeMounts:
           - name: var-run
             mountPath: /var/run
