@@ -38,3 +38,31 @@ interface only leaves you to implement the gRPC call implementation itself.
 
 Given DeviceLister, DevicePluginManager is capable of handling lifetime of the
 device plugin, it's devices and gRPC server.
+
+## Develop
+
+Build all plugins:
+
+```
+make build
+```
+
+Build specific plugins:
+
+```
+make build-vfio
+make build-network-bridge
+```
+
+Test all modules:
+
+```
+make test
+```
+
+Test specific modules:
+
+```
+make test-cmd-vfio
+make test-pkg-dpm
+```
