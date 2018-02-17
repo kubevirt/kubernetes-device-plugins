@@ -1,0 +1,9 @@
+language: go
+
+go: 1.9.x
+
+go_import_path: kubevirt.io/kubernetes-device-plugins
+
+script:
+  - make build
+  - make test
