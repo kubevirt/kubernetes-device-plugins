@@ -24,7 +24,7 @@ spec:
         - name: BRIDGES
           valueFrom:
             configMapKeyRef:
-             name: devicepluginnetworkbridge
+             name: device-plugin-network-bridge
              key: bridges
         volumeMounts:
           - name: var-run
