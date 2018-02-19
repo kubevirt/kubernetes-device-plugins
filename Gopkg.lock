@@ -2,6 +2,60 @@
 
 
 [[projects]]
+  name = "github.com/Microsoft/go-winio"
+  packages = ["."]
+  revision = "7da180ee92d8bd8bb8c37fc560e673e6557c392f"
+  version = "v0.4.7"
+
+[[projects]]
+  name = "github.com/docker/distribution"
+  packages = [
+    "digest",
+    "reference"
+  ]
+  revision = "48294d928ced5dd9b378f7fd7c6f5da3ff3f2c89"
+  version = "v2.6.2"
+
+[[projects]]
+  name = "github.com/docker/docker"
+  packages = [
+    "api/types",
+    "api/types/blkiodev",
+    "api/types/container",
+    "api/types/events",
+    "api/types/filters",
+    "api/types/mount",
+    "api/types/network",
+    "api/types/reference",
+    "api/types/registry",
+    "api/types/strslice",
+    "api/types/swarm",
+    "api/types/time",
+    "api/types/versions",
+    "api/types/volume",
+    "client",
+    "pkg/tlsconfig"
+  ]
+  revision = "092cba3727bb9b4a2f0e922cd6c0f93ea270e363"
+  version = "v1.13.1"
+
+[[projects]]
+  name = "github.com/docker/go-connections"
+  packages = [
+    "nat",
+    "sockets",
+    "tlsconfig"
+  ]
+  revision = "3ede32e2033de7505e6500d6c868c2b9ed9f169d"
+  version = "v0.3.0"
+
+[[projects]]
+  name = "github.com/docker/go-units"
+  packages = ["."]
+  revision = "0dadbb0345b35ec7ef35e228dabb8de89a65bf52"
+  version = "v0.3.2"
+
+[[projects]]
   name = "github.com/fsnotify/fsnotify"
   packages = ["."]
   revision = "c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9"
@@ -43,15 +97,38 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/vishvananda/netlink"
+  packages = [
+    ".",
+    "nl"
+  ]
+  revision = "25d2c79295b361cac34eb41cfae90d5c69078b2a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/vishvananda/netns"
+  packages = ["."]
+  revision = "be1fbeda19366dea804f00efff2dd73a1642fdcc"
+
+[[projects]]
   branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
+    "context/ctxhttp",
     "http2",
     "http2/hpack",
     "idna",
     "internal/timeseries",
     "lex/httplex",
+    "proxy",
     "trace"
   ]
   revision = "2fb46b16b8dda405028c50f7c7f0f9dd1fa6bfb1"
@@ -59,7 +136,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
 
 [[projects]]
@@ -127,6 +207,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "824a7922ebf44db14d53240c559181e5544fbf357c5dd1717ca321782cf87f6c"
+  inputs-digest = "45bf0b82d2bba2ff1e90f39dee234df87d5a057a14bcf88a79404d175a19df96"
   solver-name = "gps-cdcl"
   solver-version = 1
