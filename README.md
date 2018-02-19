@@ -15,6 +15,9 @@ handling for common patterns.
 
 ## Current Device Plugins
 
+> **Note:** When testing these device plugins ensure to open the feature gate
+> using `kubelet`'s `--feature-gates=DevicePlugins=true`
+
 Each plugin may have it's own build instructions in the linked README.md.
 
 * [VFIO](docs/vfio/README.md)

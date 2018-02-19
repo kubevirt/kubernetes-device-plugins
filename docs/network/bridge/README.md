@@ -8,13 +8,13 @@ User must specify list of bridges that should be exposed to pods. Please note,
 that bridges must be manually precreated on all nodes.
 
 ```
-kubectl create configmap devicepluginnetworkbridge --from-literal=bridges="br0,br1"
+kubectl create configmap device-plugin-network-bridge --from-literal=bridges="br0,br1"
 ```
 
 Deploy the device plugin using daemon set.
 
 ```
-kubectl create -f cmd/network/bridge/daemonset.yml
+kubectl create -f https://raw.githubusercontent.com/kubevirt/kubernetes-device-plugins/master/manifests/bridge-ds.yml
 ```
 
 Define a pod requesting secondary interface connected to bridge `br0`.
