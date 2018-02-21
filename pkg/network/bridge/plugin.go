@@ -4,6 +4,7 @@ import (
 	"container/list"
 	"fmt"
 	"math/rand"
+	"os"
 	"os/exec"
 	"time"
 
@@ -62,7 +63,10 @@ func newDevicePlugin(bridge string, nics []string) *NetworkBridgeDevicePlugin {
 	ret.DevicePlugin.Deps = ret
 
 	// TODO: This should be triggered by start()
-	createFakeDevice()
+	err := createFakeDevice()
+	if err != nil {
+		glog.Exitf("Failed to create fake device: %s", err)
+	}
 	go ret.attachPods()
 
 	return ret
@@ -80,10 +84,19 @@ func bridgeExists(bridge string) bool {
 	}
 }
 
-func createFakeDevice() {
-	glog.V(3).Info("Creating fake block device")
-	cmd := exec.Command("mknod", fakeDevicePath, "b", "1", "1")
-	cmd.Run()
+func createFakeDevice() error {
+	_, stat_err := os.Stat(fakeDevicePath)
+	if stat_err == nil {
+		glog.V(3).Info("Fake block device already exists")
+		return nil
+	} else if os.IsNotExist(stat_err) {
+		glog.V(3).Info("Creating fake block device")
+		cmd := exec.Command("mknod", fakeDevicePath, "b", "1", "1")
+		err := cmd.Run()
+		return err
+	} else {
+		panic(stat_err)
+	}
 }
 
 func (nbdp *NetworkBridgeDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
