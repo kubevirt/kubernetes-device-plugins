@@ -175,7 +175,7 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 				continue
 			}
 
-			err = attachPodToBridge(nbdp.bridge, containerPid)
+			err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
 			if err == nil {
 				glog.V(3).Info("Successfully attached pod to a bridge")
 			} else {
@@ -186,23 +186,22 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 	}
 }
 
-func attachPodToBridge(bridgeName string, containerPid int) error {
+func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	linkName := randInterfaceName()
-	peerName := randInterfaceName()
 
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
 
-	link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: linkName, MasterIndex: bridge.Attrs().Index}, PeerName: peerName}
+	link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: linkName, MasterIndex: bridge.Attrs().Index}, PeerName: nicName}
 
 	err = netlink.LinkAdd(link)
 	if err != nil {
 		return err
 	}
 
-	peer, err := netlink.LinkByName(peerName)
+	peer, err := netlink.LinkByName(nicName)
 	if err != nil {
 		netlink.LinkDel(link)
 		return err

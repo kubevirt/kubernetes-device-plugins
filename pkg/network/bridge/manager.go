@@ -5,12 +5,15 @@ import (
 	"os"
 	"strings"
 
+	"github.com/golang/glog"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (
 	BridgesListEnvironmentVariable = "BRIDGES"
 	nicsPoolSize                   = 100
+	// maximal interface name length (15) - nic index suffix (3)
+	maxBridgeNameLength = 12
 )
 
 type BridgeLister struct{}
@@ -22,8 +25,11 @@ func (bl BridgeLister) Discover() *dpm.DeviceMap {
 	var devices = make(dpm.DeviceMap)
 
 	for _, bridgeName := range bridges {
+		if len(bridgeName) > maxBridgeNameLength {
+			glog.Fatalf("Bridge name (%s) cannot be longer than %d characters", bridgeName, maxBridgeNameLength)
+		}
 		for i := 0; i < nicsPoolSize; i++ {
-			devices[bridgeName] = append(devices[bridgeName], fmt.Sprintf("%s-nic%d", bridgeName, i))
+			devices[bridgeName] = append(devices[bridgeName], fmt.Sprintf("%s-%02d", bridgeName, i))
 		}
 	}
 
