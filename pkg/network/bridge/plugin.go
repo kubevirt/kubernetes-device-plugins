@@ -22,6 +22,7 @@ const (
 	interfaceNameLen    = 15
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
+	assignmentTimeout   = 5 * time.Minute
 )
 
 type NetworkBridgeDevicePlugin struct {
@@ -33,6 +34,7 @@ type NetworkBridgeDevicePlugin struct {
 type Assignment struct {
 	DeviceID      string
 	ContainerPath string
+	Created       time.Time
 }
 
 func newDevicePlugin(bridge string, nics []string) *NetworkBridgeDevicePlugin {
@@ -132,6 +134,7 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 		nbdp.assignmentCh <- &Assignment{
 			nic,
 			assignmentPath,
+			time.Now(),
 		}
 	}
 
@@ -163,6 +166,13 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 		for a := pendingAssignments.Front(); a != nil; a = a.Next() {
 			assignment := a.Value.(*Assignment)
 			glog.V(3).Infof("Handling pending assignment for: %s", assignment.DeviceID)
+
+			if assignment.Created.Add(assignmentTimeout).After(time.Now()) {
+				glog.V(3).Info("Assignment timed out")
+				pendingAssignments.Remove(a)
+				continue
+			}
+
 			containerID, err := cli.GetContainerIDByMountedDevice(assignment.ContainerPath)
 			if err != nil {
 				glog.V(3).Info("Container was not found")
