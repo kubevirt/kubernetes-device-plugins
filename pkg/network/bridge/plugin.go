@@ -18,7 +18,7 @@ import (
 
 const (
 	resourceNamespace   = "bridge.network.kubevirt.io/"
-	fakeDevicePath      = "/tmp/deviceplugin-network-bridge-fakedev"
+	fakeDevicePath      = "/var/run/device-plugin-network-bridge-fakedev"
 	interfaceNameLen    = 15
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
