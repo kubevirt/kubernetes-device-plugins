@@ -107,6 +107,7 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	_, err = client.Register(context.Background(), reqt)
 	if err != nil {
 		glog.Errorf("Registration failed: %s", err)
+		glog.Errorf("Make sure that the DevicePlugins feature gate is enabled")
 		return err
 	}
 	return nil
