@@ -14,7 +14,7 @@ If a bridge doesn't exist, the user can create it (with root privileges) as
 follows:
 
 ```bash
-$ ip link create mybr0 type bridge
+$ ip link add mybr0 type bridge
 $ ip link set dev mybr0 up
 $ ip link show mybr0
 6: mybr0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000
