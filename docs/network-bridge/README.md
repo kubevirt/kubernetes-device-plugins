@@ -79,3 +79,5 @@ $ kubectl exec -it bridge-consumer ip link
 11: mybr0-20@if12: <BROADCAST,MULTICAST,M-DOWN> mtu 1500 qdisc noop 
     link/ether 96:21:62:8b:11:9e brd ff:ff:ff:ff:ff:ff
 ```
+
+[![asciicast](https://asciinema.org/a/165047.png)](https://asciinema.org/a/165047)
