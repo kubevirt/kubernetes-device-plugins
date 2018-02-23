@@ -167,7 +167,7 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 			assignment := a.Value.(*Assignment)
 			glog.V(3).Infof("Handling pending assignment for: %s", assignment.DeviceID)
 
-			if assignment.Created.Add(assignmentTimeout).After(time.Now()) {
+			if time.Now().After(assignment.Created.Add(assignmentTimeout)) {
 				glog.V(3).Info("Assignment timed out")
 				pendingAssignments.Remove(a)
 				continue
