@@ -22,7 +22,7 @@ const (
 	interfaceNameLen    = 15
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
-	assignmentTimeout   = 5 * time.Minute
+	assignmentTimeout   = 30 * time.Minute
 )
 
 type NetworkBridgeDevicePlugin struct {
