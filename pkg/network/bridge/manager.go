@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
@@ -11,7 +10,6 @@ import (
 
 const (
 	BridgesListEnvironmentVariable = "BRIDGES"
-	nicsPoolSize                   = 100
 	// maximal interface name length (15) - nic index suffix (3)
 	maxBridgeNameLength = 12
 )
@@ -28,9 +26,7 @@ func (bl BridgeLister) Discover() *dpm.DeviceMap {
 		if len(bridgeName) > maxBridgeNameLength {
 			glog.Fatalf("Bridge name (%s) cannot be longer than %d characters", bridgeName, maxBridgeNameLength)
 		}
-		for i := 0; i < nicsPoolSize; i++ {
-			devices[bridgeName] = append(devices[bridgeName], fmt.Sprintf("%s-%02d", bridgeName, i))
-		}
+		devices[bridgeName] = devices[bridgeName]
 	}
 
 	return &devices
