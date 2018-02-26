@@ -19,6 +19,7 @@ import (
 const (
 	resourceNamespace   = "bridge.network.kubevirt.io/"
 	fakeDevicePath      = "/var/run/device-plugin-network-bridge-fakedev"
+	nicsPoolSize        = 100
 	interfaceNameLen    = 15
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
@@ -104,9 +105,9 @@ func createFakeDevice() error {
 func (nbdp *NetworkBridgeDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	var devs []*pluginapi.Device
 
-	for _, d := range nbdp.DevicePlugin.Devs {
+	for i := 0; i < nicsPoolSize; i++ {
 		devs = append(devs, &pluginapi.Device{
-			ID:     d.ID,
+			ID:     fmt.Sprintf("%s-%02d", nbdp.bridge, i),
 			Health: pluginapi.Healthy,
 		})
 	}
@@ -114,10 +115,7 @@ func (nbdp *NetworkBridgeDevicePlugin) ListAndWatch(e *pluginapi.Empty, s plugin
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: devs})
 
 	for {
-		select {
-		case <-nbdp.DevicePlugin.Update:
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: nbdp.DevicePlugin.Devs})
-		}
+		time.Sleep(time.Minute)
 	}
 }
 
