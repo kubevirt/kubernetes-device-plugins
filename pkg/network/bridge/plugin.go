@@ -39,24 +39,11 @@ type Assignment struct {
 }
 
 func newDevicePlugin(bridge string, nics []string) *NetworkBridgeDevicePlugin {
-	if !bridgeExists(bridge) {
-		glog.Exitf("Bridge %s does not exist", bridge)
-	}
-
-	var devs []*pluginapi.Device
-
-	for _, nic := range nics {
-		devs = append(devs, &pluginapi.Device{
-			ID:     nic,
-			Health: pluginapi.Healthy,
-		})
-	}
-
 	glog.V(3).Infof("Creating device plugin %s, initial devices %v", bridge, nics)
 	ret := &NetworkBridgeDevicePlugin{
 		dpm.DevicePlugin{
 			Socket:       pluginapi.DevicePluginPath + bridge,
-			Devs:         devs,
+			Devs:         make([]*pluginapi.Device, 0),
 			ResourceName: resourceNamespace + bridge,
 			Update:       make(chan dpm.Message),
 		},
@@ -75,18 +62,6 @@ func newDevicePlugin(bridge string, nics []string) *NetworkBridgeDevicePlugin {
 	return ret
 }
 
-func bridgeExists(bridge string) bool {
-	link, err := netlink.LinkByName(bridge)
-	if err != nil {
-		return false
-	}
-	if _, ok := link.(*netlink.Bridge); ok {
-		return true
-	} else {
-		return false
-	}
-}
-
 func createFakeDevice() error {
 	_, stat_err := os.Stat(fakeDevicePath)
 	if stat_err == nil {
@@ -103,19 +78,51 @@ func createFakeDevice() error {
 }
 
 func (nbdp *NetworkBridgeDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	var devs []*pluginapi.Device
+	bridgeDevs := nbdp.generateBridgeDevices()
+	noBridgeDevs := make([]*pluginapi.Device, 0)
+	emitResponse := func(bridgeExists bool) {
+		if bridgeExists {
+			glog.V(3).Info("Bridge exists, sending ListAndWatch reponse with available ports")
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: bridgeDevs})
+		} else {
+			glog.V(3).Info("Bridge does not exist, sending ListAndWatch reponse with no ports")
+			s.Send(&pluginapi.ListAndWatchResponse{Devices: noBridgeDevs})
+		}
+	}
 
+	didBridgeExist := bridgeExists(nbdp.bridge)
+	emitResponse(didBridgeExist)
+
+	for {
+		doesBridgeExist := bridgeExists(nbdp.bridge)
+		if didBridgeExist != doesBridgeExist {
+			emitResponse(doesBridgeExist)
+			didBridgeExist = doesBridgeExist
+		}
+		time.Sleep(10 * time.Second)
+	}
+}
+
+func (nbdp *NetworkBridgeDevicePlugin) generateBridgeDevices() []*pluginapi.Device {
+	var bridgeDevs []*pluginapi.Device
 	for i := 0; i < nicsPoolSize; i++ {
-		devs = append(devs, &pluginapi.Device{
+		bridgeDevs = append(bridgeDevs, &pluginapi.Device{
 			ID:     fmt.Sprintf("%s-%02d", nbdp.bridge, i),
 			Health: pluginapi.Healthy,
 		})
 	}
+	return bridgeDevs
+}
 
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: devs})
-
-	for {
-		time.Sleep(time.Minute)
+func bridgeExists(bridge string) bool {
+	link, err := netlink.LinkByName(bridge)
+	if err != nil {
+		return false
+	}
+	if _, ok := link.(*netlink.Bridge); ok {
+		return true
+	} else {
+		return false
 	}
 }
 
