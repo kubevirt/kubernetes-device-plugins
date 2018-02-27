@@ -38,14 +38,12 @@ type Assignment struct {
 	Created       time.Time
 }
 
-func newDevicePlugin(bridge string, nics []string) *NetworkBridgeDevicePlugin {
-	glog.V(3).Infof("Creating device plugin %s, initial devices %v", bridge, nics)
+func newDevicePlugin(bridge string) *NetworkBridgeDevicePlugin {
+	glog.V(3).Infof("Creating device plugin %s", bridge)
 	ret := &NetworkBridgeDevicePlugin{
 		dpm.DevicePlugin{
 			Socket:       pluginapi.DevicePluginPath + bridge,
-			Devs:         make([]*pluginapi.Device, 0),
 			ResourceName: resourceNamespace + bridge,
-			Update:       make(chan dpm.Message),
 		},
 		bridge,
 		make(chan *Assignment),

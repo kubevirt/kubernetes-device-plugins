@@ -32,6 +32,6 @@ func (bl BridgeLister) Discover() *dpm.DeviceMap {
 	return &devices
 }
 
-func (bl BridgeLister) NewDevicePlugin(bridge string, nics []string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(bridge, nics))
+func (bl BridgeLister) NewDevicePlugin(bridge string, devices []string) dpm.DevicePluginInterface {
+	return dpm.DevicePluginInterface(newDevicePlugin(bridge))
 }
