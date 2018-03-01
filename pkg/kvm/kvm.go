@@ -27,40 +27,31 @@ type KVMDevicePlugin struct {
 }
 
 // Discovery discovers all KVM devices within the system.
-func (kvm KVMLister) Discover() *dpm.DeviceMap {
-	var devices = make(dpm.DeviceMap)
+func (kvm KVMLister) Discover() *dpm.PluginList {
+	var plugins = make(dpm.PluginList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
 		glog.V(3).Infof("Discovered %s", KVMPath)
-		devices["kvm"] = append(devices["kvm"], KVMName)
+		plugins = append(plugins, "kvm")
 	}
 
-	return &devices
+	return &plugins
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (kvm KVMLister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(deviceID, deviceIDs))
+func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
+	return dpm.DevicePluginInterface(newDevicePlugin(deviceID))
 }
 
 // newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
-func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
-	var devs []*pluginapi.Device
-
-	for _, deviceID := range deviceIDs {
-		devs = append(devs, &pluginapi.Device{
-			ID:     deviceID,
-			Health: pluginapi.Healthy,
-		})
-	}
-
-	glog.V(3).Infof("Creating device plugin %s, initial devices %v", deviceID, devs)
+func newDevicePlugin(deviceID string) *KVMDevicePlugin {
+	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	ret := &KVMDevicePlugin{
 		counter: 0,
 	}
 	ret.DevicePlugin = dpm.DevicePlugin{
 		Socket:       pluginapi.DevicePluginPath + deviceID,
-		Devs:         devs,
+		Devs:         make([]*pluginapi.Device, 0),
 		ResourceName: resourceNamespace + deviceID,
 		Update:       make(chan dpm.Message),
 	}
@@ -71,6 +62,12 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *KVMDevicePlugin {
 
 // ListAndWatch sends gRPC stream of devices.
 func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
+	// Initialize with one available device
+	dpi.DevicePlugin.Devs = append(dpi.DevicePlugin.Devs, &pluginapi.Device{
+		ID:     KVMName + strconv.Itoa(dpi.counter),
+		Health: pluginapi.Healthy,
+	})
+
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: dpi.DevicePlugin.Devs})
 
 	for {

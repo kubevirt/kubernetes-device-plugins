@@ -5,53 +5,54 @@
 package dpm
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockDeviceLister is a mock of DeviceLister interface
-type MockDeviceLister struct {
+// MockPluginLister is a mock of PluginLister interface
+type MockPluginLister struct {
 	ctrl     *gomock.Controller
-	recorder *MockDeviceListerMockRecorder
+	recorder *MockPluginListerMockRecorder
 }
 
-// MockDeviceListerMockRecorder is the mock recorder for MockDeviceLister
-type MockDeviceListerMockRecorder struct {
-	mock *MockDeviceLister
+// MockPluginListerMockRecorder is the mock recorder for MockPluginLister
+type MockPluginListerMockRecorder struct {
+	mock *MockPluginLister
 }
 
-// NewMockDeviceLister creates a new mock instance
-func NewMockDeviceLister(ctrl *gomock.Controller) *MockDeviceLister {
-	mock := &MockDeviceLister{ctrl: ctrl}
-	mock.recorder = &MockDeviceListerMockRecorder{mock}
+// NewMockPluginLister creates a new mock instance
+func NewMockPluginLister(ctrl *gomock.Controller) *MockPluginLister {
+	mock := &MockPluginLister{ctrl: ctrl}
+	mock.recorder = &MockPluginListerMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockDeviceLister) EXPECT() *MockDeviceListerMockRecorder {
+func (m *MockPluginLister) EXPECT() *MockPluginListerMockRecorder {
 	return m.recorder
 }
 
 // Discover mocks base method
-func (m *MockDeviceLister) Discover() *DeviceMap {
+func (m *MockPluginLister) Discover() *PluginList {
 	ret := m.ctrl.Call(m, "Discover")
-	ret0, _ := ret[0].(*DeviceMap)
+	ret0, _ := ret[0].(*PluginList)
 	return ret0
 }
 
 // Discover indicates an expected call of Discover
-func (mr *MockDeviceListerMockRecorder) Discover() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockDeviceLister)(nil).Discover))
+func (mr *MockPluginListerMockRecorder) Discover() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockPluginLister)(nil).Discover))
 }
 
 // NewDevicePlugin mocks base method
-func (m *MockDeviceLister) NewDevicePlugin(arg0 string, arg1 []string) DevicePluginInterface {
-	ret := m.ctrl.Call(m, "NewDevicePlugin", arg0, arg1)
+func (m *MockPluginLister) NewDevicePlugin(arg0 string) DevicePluginInterface {
+	ret := m.ctrl.Call(m, "NewDevicePlugin", arg0)
 	ret0, _ := ret[0].(DevicePluginInterface)
 	return ret0
 }
 
 // NewDevicePlugin indicates an expected call of NewDevicePlugin
-func (mr *MockDeviceListerMockRecorder) NewDevicePlugin(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDevicePlugin", reflect.TypeOf((*MockDeviceLister)(nil).NewDevicePlugin), arg0, arg1)
+func (mr *MockPluginListerMockRecorder) NewDevicePlugin(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NewDevicePlugin", reflect.TypeOf((*MockPluginLister)(nil).NewDevicePlugin), arg0)
 }

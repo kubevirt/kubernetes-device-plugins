@@ -16,22 +16,22 @@ const (
 
 type BridgeLister struct{}
 
-func (bl BridgeLister) Discover() *dpm.DeviceMap {
+func (bl BridgeLister) Discover() *dpm.PluginList {
+	var plugins = make(dpm.PluginList, 0)
+
 	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
 	bridges := strings.Split(bridgesListRaw, ",")
-
-	var devices = make(dpm.DeviceMap)
 
 	for _, bridgeName := range bridges {
 		if len(bridgeName) > maxBridgeNameLength {
 			glog.Fatalf("Bridge name (%s) cannot be longer than %d characters", bridgeName, maxBridgeNameLength)
 		}
-		devices[bridgeName] = devices[bridgeName]
+		plugins = append(plugins, bridgeName)
 	}
 
-	return &devices
+	return &plugins
 }
 
-func (bl BridgeLister) NewDevicePlugin(bridge string, devices []string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(bridge))
+func (bl BridgeLister) NewDevicePlugin(bridgeName string) dpm.DevicePluginInterface {
+	return dpm.DevicePluginInterface(newDevicePlugin(bridgeName))
 }

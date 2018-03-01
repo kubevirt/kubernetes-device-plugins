@@ -14,7 +14,7 @@ import (
 // DevicePluginManager is container for 1 or more DevicePlugins.
 type DevicePluginManager struct {
 	plugins   []DevicePluginInterface
-	lister    DeviceLister
+	lister    PluginLister
 	stopCh    chan struct{}
 	signalCh  chan os.Signal
 	fsWatcher *fsnotify.Watcher
@@ -22,7 +22,7 @@ type DevicePluginManager struct {
 
 // NewDevicePluginManager is the canonical way of initializing DevicePluginManager. It sets up the infrastructure for
 // the manager to correctly handle signals and Kubelet socket watch.
-func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
+func NewDevicePluginManager(lister PluginLister) *DevicePluginManager {
 	stopCh := make(chan struct{})
 
 	// First important signal channel is the os signal channel. We only care about (somewhat) small subset of available signals.
@@ -41,12 +41,12 @@ func NewDevicePluginManager(lister DeviceLister) *DevicePluginManager {
 
 	go dpm.handleSignals()
 
-	// We can now move to functionality: first, the initial pool of devices is needed.
-	devices := lister.Discover()
+	// We can now move to functionality: first, the initial list of plugins
+	plugins := lister.Discover()
 
-	// As we use the pool to initialize device plugins (the actual gRPC servers) themselves.
-	for deviceClass, deviceIDs := range *devices {
-		dpm.plugins = append(dpm.plugins, lister.NewDevicePlugin(deviceClass, deviceIDs))
+	// As we use the pool to initialize plugins (the actual gRPC servers) themselves.
+	for _, pluginName := range *plugins {
+		dpm.plugins = append(dpm.plugins, lister.NewDevicePlugin(pluginName))
 	}
 
 	return dpm

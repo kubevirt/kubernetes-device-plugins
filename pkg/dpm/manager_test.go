@@ -8,16 +8,14 @@ import (
 )
 
 func TestDevicePluginManagerFlow(t *testing.T) {
-	devices := &DeviceMap{
-		"a": []string{"a", "b", "c"},
-	}
+	devices := &PluginList{"a"}
 
 	ctrl := gomock.NewController(t)
-	lister := NewMockDeviceLister(ctrl)
+	lister := NewMockPluginLister(ctrl)
 	plugin := NewMockDevicePluginInterface(ctrl)
 
 	lister.EXPECT().Discover().Return(devices)
-	lister.EXPECT().NewDevicePlugin("a", []string{"a", "b", "c"}).Return(DevicePluginInterface(plugin))
+	lister.EXPECT().NewDevicePlugin("a").Return(DevicePluginInterface(plugin))
 	plugin.EXPECT().Start()
 	plugin.EXPECT().Stop()
 

@@ -1,9 +1,8 @@
 package dpm
 
-type DeviceMap map[string][]string
+type PluginList []string
 
-// DeviceLister is the interface that plugin-specific lister needs to implement in order to register with DevicePluginManager.
-type DeviceLister interface {
-	Discover() *DeviceMap
-	NewDevicePlugin(string, []string) DevicePluginInterface
+type PluginLister interface {
+	Discover() *PluginList
+	NewDevicePlugin(string) DevicePluginInterface
 }

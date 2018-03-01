@@ -1,6 +1,9 @@
 package pci
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/golang/glog"
@@ -17,28 +20,20 @@ const (
 // DevicePlugin represents a gRPC server client/server.
 type VFIODevicePlugin struct {
 	dpm.DevicePlugin
+	vendorID string
 }
 
 var iommuMutex = &sync.Mutex{}
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func newDevicePlugin(deviceID string, deviceIDs []string) *VFIODevicePlugin {
-	var devs []*pluginapi.Device
-
-	for _, deviceID := range deviceIDs {
-		devs = append(devs, &pluginapi.Device{
-			ID:     deviceID,
-			Health: pluginapi.Healthy,
-		})
-	}
-
-	glog.V(3).Infof("Creating device plugin %s, initial devices %v", deviceID, devs)
+func newDevicePlugin(vendorID string) *VFIODevicePlugin {
+	glog.V(3).Infof("Creating device plugin %s", vendorID)
 	ret := &VFIODevicePlugin{
 		dpm.DevicePlugin{
-			Socket:       pluginapi.DevicePluginPath + deviceID,
-			Devs:         devs,
-			ResourceName: resourceNamespace + deviceID,
+			Socket:       pluginapi.DevicePluginPath + vendorID,
+			ResourceName: resourceNamespace + vendorID,
 		},
+		vendorID,
 	}
 	ret.DevicePlugin.Deps = ret
 
@@ -49,18 +44,42 @@ func newDevicePlugin(deviceID string, deviceIDs []string) *VFIODevicePlugin {
 func (dpi *VFIODevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	var devs []*pluginapi.Device
 
-	for _, d := range dpi.DevicePlugin.Devs {
-		devs = append(devs, &pluginapi.Device{
-			ID:     d.ID,
-			Health: pluginapi.Healthy,
-		})
-	}
+	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
+		// TODO: fix logs
+		glog.V(3).Infof("Discovering device in %s", path)
+		if info.IsDir() {
+			glog.V(3).Infof("Not a device, continuing")
+			return nil
+		}
+
+		vendorID, deviceID, err := getDeviceVendor(info.Name())
+		if err != nil {
+			glog.V(3).Infof("Could not process device %s", info.Name())
+			return filepath.SkipDir
+		}
+
+		if vendorID == dpi.vendorID {
+			deviceClass := formatDeviceID(vendorID, deviceID)
+			devs = append(devs, &pluginapi.Device{
+				ID:     deviceClass,
+				Health: pluginapi.Healthy,
+			})
+		}
+
+		return nil
+	})
 
 	s.Send(&pluginapi.ListAndWatchResponse{Devices: devs})
 
 	for {
 		select {}
 	}
+}
+
+// formatDeviceID formats the device class so that the pods can request it in the limits.
+// Typically, vendor:device would be used, but the resource name may not contain ":".
+func formatDeviceID(vendorID string, deviceID string) string {
+	return strings.Join([]string{vendorID, deviceID}, "_")
 }
 
 // Allocate allocates a set of devices to be used by container runtime environment.
