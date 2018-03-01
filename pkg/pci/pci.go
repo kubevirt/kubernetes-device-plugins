@@ -17,9 +17,8 @@ import (
 type PCILister struct{}
 
 // Discovery discovers all PCI devices within the system.
-func (pci PCILister) Discover() *dpm.DeviceMap {
-	var devices = make(dpm.DeviceMap)
-
+func (pci PCILister) Discover() *dpm.PluginList {
+	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
 		glog.V(3).Infof("Discovering device in %s", path)
 		if info.IsDir() {
@@ -27,25 +26,29 @@ func (pci PCILister) Discover() *dpm.DeviceMap {
 			return nil
 		}
 
-		vendorID, deviceID, err := getDeviceVendor(info.Name())
+		vendorID, _, err := getDeviceVendor(info.Name())
 		if err != nil {
 			glog.V(3).Infof("Could not process device %s", info.Name())
 			return filepath.SkipDir
 		}
 
-		deviceClass := formatDeviceID(vendorID, deviceID)
-		devices[deviceClass] = append(devices[deviceClass], info.Name())
+		devicesSet[vendorID] = devicesSet[vendorID]
 
 		return nil
 	})
 
-	glog.V(3).Infof("Discovered devices: %s", devices)
-	return &devices
+	var plugins = make(dpm.PluginList, 0)
+	for deviceClass, _ := range devicesSet {
+		plugins = append(plugins, deviceClass)
+	}
+
+	glog.V(3).Infof("Discovered plugins: %s", plugins)
+	return &plugins
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (pci PCILister) NewDevicePlugin(deviceID string, deviceIDs []string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(deviceID, deviceIDs))
+func (pci PCILister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
+	return dpm.DevicePluginInterface(newDevicePlugin(deviceID))
 }
 
 // getIOMMUGroup finds device's IOMMU group.
@@ -179,12 +182,6 @@ func getDeviceVendor(deviceAddress string) (string, string, error) {
 	deviceID := strings.Trim(string(data[2:]), "\n")
 
 	return vendorID, deviceID, nil
-}
-
-// formatDeviceID formats the device class so that the pods can request it in the limits.
-// Typically, vendor:device would be used, but the resource name may not contain ":".
-func formatDeviceID(vendorID string, deviceID string) string {
-	return strings.Join([]string{vendorID, deviceID}, "_")
 }
 
 // driverOverride uses driver_override sysfs endpoint to temporarily change device driver.

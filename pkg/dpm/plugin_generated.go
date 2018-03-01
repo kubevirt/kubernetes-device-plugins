@@ -5,10 +5,11 @@
 package dpm
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	context "golang.org/x/net/context"
 	v1alpha "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
-	reflect "reflect"
 )
 
 // MockDevicePluginInterface is a mock of DevicePluginInterface interface
