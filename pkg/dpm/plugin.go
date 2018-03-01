@@ -36,6 +36,33 @@ type DevicePlugin struct {
 	Starting     sync.Mutex
 }
 
+// Start starts the gRPC server and registers the device plugin to Kubelet. Calling Start on started object is NOOP.
+func (dpi *DevicePlugin) Start() error {
+	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
+	dpi.Starting.Lock()
+	defer dpi.Starting.Unlock()
+
+	// If we've acquired the lock after waiting for the Start to finish, we don't need to do anything (as long as the plugin is running).
+	if dpi.Running {
+		return nil
+	}
+
+	err := dpi.serve()
+	if err != nil {
+		return err
+	}
+
+	dpi.Running = true
+
+	err = dpi.register(pluginapi.KubeletSocket, dpi.ResourceName)
+	if err != nil {
+		dpi.Stop()
+		return err
+	}
+
+	return nil
+}
+
 // serve starts the gRPC server of the device plugin.
 func (dpi *DevicePlugin) serve() error {
 	glog.V(3).Info("Starting the DPI gRPC server")
@@ -69,20 +96,6 @@ func (dpi *DevicePlugin) serve() error {
 	return nil
 }
 
-// Stop stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
-func (dpi *DevicePlugin) Stop() error {
-	if !dpi.Running {
-		glog.V(3).Info("Tried to stop stopped DPI")
-		return nil
-	}
-
-	glog.V(3).Info("Stopping the DPI gRPC server")
-	dpi.Server.Stop()
-	dpi.Running = false
-
-	return dpi.cleanup()
-}
-
 // register registers the device plugin (as gRPC client call) for the given resourceName with Kubelet DPI infrastructure.
 func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	glog.V(3).Info("Registering the DPI with Kubelet")
@@ -113,31 +126,18 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// Start starts the gRPC server and registers the device plugin to Kubelet. Calling Start on started object is NOOP.
-func (dpi *DevicePlugin) Start() error {
-	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
-	dpi.Starting.Lock()
-	defer dpi.Starting.Unlock()
-
-	// If we've acquired the lock after waiting for the Start to finish, we don't need to do anything (as long as the plugin is running).
-	if dpi.Running {
+// Stop stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
+func (dpi *DevicePlugin) Stop() error {
+	if !dpi.Running {
+		glog.V(3).Info("Tried to stop stopped DPI")
 		return nil
 	}
 
-	err := dpi.serve()
-	if err != nil {
-		return err
-	}
+	glog.V(3).Info("Stopping the DPI gRPC server")
+	dpi.Server.Stop()
+	dpi.Running = false
 
-	dpi.Running = true
-
-	err = dpi.register(pluginapi.KubeletSocket, dpi.ResourceName)
-	if err != nil {
-		dpi.Stop()
-		return err
-	}
-
-	return nil
+	return dpi.cleanup()
 }
 
 // cleanup is a helper to remove DPI's socket.
