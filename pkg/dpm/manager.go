@@ -3,6 +3,7 @@ package dpm
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/fsnotify/fsnotify"
@@ -42,6 +43,8 @@ func (dpm *DevicePluginManager) Run() {
 	defer close(pluginsCh)
 	go dpm.lister.Discover(pluginsCh)
 
+	var wg sync.WaitGroup
+
 HandleSignals:
 	for {
 		select {
@@ -52,33 +55,53 @@ HandleSignals:
 			}
 			// add new
 			for newPluginName, _ := range newPluginsSet {
-				if _, ok := pluginsMap[newPluginName]; !ok {
-					plugin := NewDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
-					go startPlugin(plugin)
-					go plugin.StartServer()
-					pluginsMap[newPluginName] = plugin
-				}
+				wg.Add(1)
+				go func() {
+					if _, ok := pluginsMap[newPluginName]; !ok {
+						plugin := NewDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
+						startPlugin(plugin)
+						plugin.StartServer()
+						pluginsMap[newPluginName] = plugin
+					}
+					wg.Done()
+				}()
 			}
+			wg.Wait()
 			// remove old
 			for pluginName, plugin := range pluginsMap {
-				if _, ok := newPluginsSet[pluginName]; !ok {
-					plugin.StopServer()
-					go stopPlugin(plugin)
-					delete(pluginsMap, pluginName)
-				}
+				wg.Add(1)
+				go func() {
+					if _, ok := newPluginsSet[pluginName]; !ok {
+						plugin.StopServer()
+						stopPlugin(plugin)
+						delete(pluginsMap, pluginName)
+					}
+					wg.Done()
+				}()
 			}
+			wg.Wait()
 		case event := <-fsWatcher.Events:
 			if event.Name == pluginapi.KubeletSocket {
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					for _, plugin := range pluginsMap {
-						plugin.StartServer()
+						wg.Add(1)
+						go func() {
+							plugin.StartServer()
+							wg.Done()
+						}()
 					}
+					wg.Wait()
 				}
 				// TODO: Kubelet doesn't really clean-up it's socket, so this is currently manual-testing thing. Could we solve Kubelet deaths better?
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					for _, plugin := range pluginsMap {
-						plugin.StopServer()
+						wg.Add(1)
+						go func() {
+							plugin.StopServer()
+							wg.Done()
+						}()
 					}
+					wg.Wait()
 				}
 			}
 		case s := <-signalCh:
@@ -86,9 +109,13 @@ HandleSignals:
 			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
 				for _, plugin := range pluginsMap {
-					plugin.StopServer()
-					go stopPlugin(plugin)
+					wg.Add(1)
+					go func() {
+						plugin.StopServer()
+						stopPlugin(plugin)
+					}()
 				}
+				wg.Wait()
 				break HandleSignals
 			}
 		}
