@@ -34,15 +34,13 @@ func (m *MockPluginLister) EXPECT() *MockPluginListerMockRecorder {
 }
 
 // Discover mocks base method
-func (m *MockPluginLister) Discover() *PluginList {
-	ret := m.ctrl.Call(m, "Discover")
-	ret0, _ := ret[0].(*PluginList)
-	return ret0
+func (m *MockPluginLister) Discover(arg0 chan PluginList) {
+	m.ctrl.Call(m, "Discover", arg0)
 }
 
 // Discover indicates an expected call of Discover
-func (mr *MockPluginListerMockRecorder) Discover() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockPluginLister)(nil).Discover))
+func (mr *MockPluginListerMockRecorder) Discover(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Discover", reflect.TypeOf((*MockPluginLister)(nil).Discover), arg0)
 }
 
 // NewDevicePlugin mocks base method

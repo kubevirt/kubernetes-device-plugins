@@ -3,6 +3,6 @@ package dpm
 type PluginList []string
 
 type PluginLister interface {
-	Discover() *PluginList
+	Discover(chan PluginList)
 	NewDevicePlugin(string) DevicePluginInterface
 }

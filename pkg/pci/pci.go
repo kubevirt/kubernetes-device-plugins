@@ -17,7 +17,8 @@ import (
 type PCILister struct{}
 
 // Discovery discovers all PCI devices within the system.
-func (pci PCILister) Discover() *dpm.PluginList {
+// TODO: hide implementation details ??
+func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
 		glog.V(3).Infof("Discovering device in %s", path)
@@ -43,7 +44,7 @@ func (pci PCILister) Discover() *dpm.PluginList {
 	}
 
 	glog.V(3).Infof("Discovered plugins: %s", plugins)
-	return &plugins
+	pluginListCh <- plugins
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".

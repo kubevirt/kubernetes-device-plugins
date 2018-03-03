@@ -13,88 +13,80 @@ import (
 
 // DevicePluginManager is container for 1 or more DevicePlugins.
 type DevicePluginManager struct {
-	plugins   []DevicePluginInterface
-	lister    PluginLister
-	stopCh    chan struct{}
-	signalCh  chan os.Signal
-	fsWatcher *fsnotify.Watcher
+	lister PluginLister
 }
 
 // NewDevicePluginManager is the canonical way of initializing DevicePluginManager. It sets up the infrastructure for
-// the manager to correctly handle signals and Kubelet socket watch.
+// the manager to correctly handle signals and Kubelet socket watch. TODO: not anymore
 func NewDevicePluginManager(lister PluginLister) *DevicePluginManager {
-	stopCh := make(chan struct{})
-
-	// First important signal channel is the os signal channel. We only care about (somewhat) small subset of available signals.
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
-
-	// The other important channel is filesystem notification channel, responsible for watching device plugin directory.
-	fsWatcher, _ := fsnotify.NewWatcher()
-	fsWatcher.Add(pluginapi.DevicePluginPath)
-
 	dpm := &DevicePluginManager{
-		stopCh:    stopCh,
-		signalCh:  sigs,
-		fsWatcher: fsWatcher,
+		lister: lister,
 	}
-
-	go dpm.handleSignals()
-
-	// We can now move to functionality: first, the initial list of plugins
-	plugins := lister.Discover()
-
-	// As we use the pool to initialize plugins (the actual gRPC servers) themselves.
-	for _, pluginName := range *plugins {
-		dpm.plugins = append(dpm.plugins, lister.NewDevicePlugin(pluginName))
-	}
-
 	return dpm
 }
 
 // Run starts the DevicePluginManager.
 func (dpm *DevicePluginManager) Run() {
-	defer dpm.fsWatcher.Close()
-	dpm.startPlugins()
+	var pluginsMap = make(map[string]DevicePluginInterface)
 
-	// The manager cannot be restarted, it is expected to be the `core` of an application.
-	<-dpm.stopCh
-	dpm.stopPlugins()
-}
+	// First important signal channel is the os signal channel. We only care about (somewhat) small subset of available signals.
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT)
 
-// startPlugins is helper function to start the underlying gRPC device plugins.
-func (dpm *DevicePluginManager) startPlugins() {
-	for _, plugin := range dpm.plugins {
-		go plugin.Start()
-	}
-}
+	// The other important channel is filesystem notification channel, responsible for watching device plugin directory.
+	fsWatcher, _ := fsnotify.NewWatcher()
+	defer fsWatcher.Close()
+	fsWatcher.Add(pluginapi.DevicePluginPath)
 
-// startPlugins is helper function to stop the underlying gRPC device plugins.
-func (dpm *DevicePluginManager) stopPlugins() {
-	for _, plugin := range dpm.plugins {
-		plugin.Stop()
-	}
-}
+	pluginsCh := make(chan PluginList)
+	defer close(pluginsCh)
+	go dpm.lister.Discover(pluginsCh)
 
-// handleSignals is the main signal handler that is responsible for handling of OS signals and Kubelet device plugins directory changes.
-func (dpm *DevicePluginManager) handleSignals() {
+HandleSignals:
 	for {
 		select {
-		case s := <-dpm.signalCh:
-			switch s {
-			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
-				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
-				close(dpm.stopCh)
+		case newPlugins := <-pluginsCh:
+			newPluginsSet := make(map[string]bool)
+			for _, newPluginName := range newPlugins {
+				newPluginsSet[newPluginName] = true
 			}
-		case event := <-dpm.fsWatcher.Events:
+			// add new
+			for newPluginName, _ := range newPluginsSet {
+				if _, ok := pluginsMap[newPluginName]; !ok {
+					plugin := dpm.lister.NewDevicePlugin(newPluginName)
+					go plugin.Start()
+					pluginsMap[newPluginName] = plugin
+				}
+			}
+			// remove old
+			for pluginName, plugin := range pluginsMap {
+				if _, ok := newPluginsSet[pluginName]; !ok {
+					plugin.Stop()
+					delete(pluginsMap, pluginName)
+				}
+			}
+		case event := <-fsWatcher.Events:
 			if event.Name == pluginapi.KubeletSocket {
 				if event.Op&fsnotify.Create == fsnotify.Create {
-					dpm.startPlugins()
+					for _, plugin := range pluginsMap {
+						plugin.Start()
+					}
 				}
 				// TODO: Kubelet doesn't really clean-up it's socket, so this is currently manual-testing thing. Could we solve Kubelet deaths better?
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
-					dpm.stopPlugins()
+					for _, plugin := range pluginsMap {
+						plugin.Stop()
+					}
 				}
+			}
+		case s := <-signalCh:
+			switch s {
+			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
+				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
+				for _, plugin := range pluginsMap {
+					plugin.Stop()
+				}
+				break HandleSignals
 			}
 		}
 	}
