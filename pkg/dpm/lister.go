@@ -2,7 +2,8 @@ package dpm
 
 type PluginList []string
 
-type PluginLister interface {
+type PluginListerInterface interface {
+	GetResourceName() string
 	Discover(chan PluginList)
-	NewDevicePlugin(string) DevicePluginInterface
+	NewDevicePlugin(string) DevicePluginImplementationInterface
 }

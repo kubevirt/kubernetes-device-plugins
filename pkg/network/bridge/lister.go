@@ -5,17 +5,21 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (
+	resourceNamespace              = "bridge.network.kubevirt.io/"
 	BridgesListEnvironmentVariable = "BRIDGES"
 	// maximal interface name length (15) - nic index suffix (3)
 	maxBridgeNameLength = 12
 )
 
 type BridgeLister struct{}
+
+func (bl BridgeLister) GetResourceName() string {
+	return resourceNamespace
+}
 
 func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
 	var plugins = make(dpm.PluginList, 0)
@@ -33,17 +37,10 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
 	pluginListCh <- plugins
 }
 
-func (bl BridgeLister) NewDevicePlugin(bridge string) dpm.DevicePluginInterface {
+func (bl BridgeLister) NewDevicePlugin(bridge string) dpm.DevicePluginImplementationInterface {
 	glog.V(3).Infof("Creating device plugin %s", bridge)
-	ret := &NetworkBridgeDevicePlugin{
-		dpm.DevicePlugin{
-			Socket:       pluginapi.DevicePluginPath + bridge,
-			ResourceName: resourceNamespace + bridge,
-		},
-		bridge,
-		make(chan *Assignment),
+	return &NetworkBridgeDevicePlugin{
+		bridge:       bridge,
+		assignmentCh: make(chan *Assignment),
 	}
-	ret.DevicePlugin.Deps = ret
-
-	return ret
 }

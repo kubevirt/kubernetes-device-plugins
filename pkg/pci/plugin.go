@@ -9,27 +9,20 @@ import (
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
-
-	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
-)
-
-const (
-	resourceNamespace = "devices.kubevirt.io/"
 )
 
 // DevicePlugin represents a gRPC server client/server.
 type VFIODevicePlugin struct {
-	dpm.DevicePlugin
 	vendorID string
 }
 
 var iommuMutex = &sync.Mutex{}
 
-func (dpi *VFIODevicePlugin) StartPlugin() error {
+func (dpi *VFIODevicePlugin) Start() error {
 	return nil
 }
 
-func (dpi *VFIODevicePlugin) StopPlugin() error {
+func (dpi *VFIODevicePlugin) Stop() error {
 	return nil
 }
 

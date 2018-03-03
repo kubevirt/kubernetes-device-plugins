@@ -44,9 +44,9 @@ func (mr *MockPluginListerMockRecorder) Discover(arg0 interface{}) *gomock.Call 
 }
 
 // NewDevicePlugin mocks base method
-func (m *MockPluginLister) NewDevicePlugin(arg0 string) DevicePluginInterface {
+func (m *MockPluginLister) NewDevicePlugin(arg0 string) DevicePluginImplementationInterface {
 	ret := m.ctrl.Call(m, "NewDevicePlugin", arg0)
-	ret0, _ := ret[0].(DevicePluginInterface)
+	ret0, _ := ret[0].(DevicePluginImplementationInterface)
 	return ret0
 }
 

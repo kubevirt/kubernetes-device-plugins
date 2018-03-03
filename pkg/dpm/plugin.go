@@ -14,24 +14,28 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-// DevicePluginInterface is the interface that each device plugin implementation must implement.
-// Some function are provided by DevicePlugin structure, so only those missing need to be implemented.
-type DevicePluginInterface interface {
+type DevicePluginImplementationInterface interface {
 	pluginapi.DevicePluginServer
-	StartPlugin() error
-	StartServer() error
-	StopPlugin() error
-	StopServer() error
+	Start() error
+	Stop() error
 }
 
 // DevicePlugin represents a gRPC server client/server.
 type DevicePlugin struct {
-	Socket       string
-	Server       *grpc.Server
-	ResourceName string
-	Deps         DevicePluginInterface
-	Running      bool
-	Starting     sync.Mutex
+	DevicePluginImplementation DevicePluginImplementationInterface
+	ResourceName               string
+	Socket                     string
+	Server                     *grpc.Server
+	Running                    bool
+	Starting                   sync.Mutex
+}
+
+func NewDevicePlugin(resourceName string, deviceName string, devicePluginImplementation DevicePluginImplementationInterface) DevicePlugin {
+	return DevicePlugin{
+		DevicePluginImplementation: devicePluginImplementation,
+		Socket:       pluginapi.DevicePluginPath + deviceName,
+		ResourceName: resourceName + deviceName,
+	}
 }
 
 // StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling StartServer on started object is NOOP.
@@ -78,7 +82,7 @@ func (dpi *DevicePlugin) serve() error {
 	}
 
 	dpi.Server = grpc.NewServer([]grpc.ServerOption{}...)
-	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.Deps)
+	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.DevicePluginImplementation)
 
 	go dpi.Server.Serve(sock)
 	glog.V(3).Info("Serving requests...")

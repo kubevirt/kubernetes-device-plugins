@@ -12,43 +12,43 @@ import (
 	v1alpha "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-// MockDevicePluginInterface is a mock of DevicePluginInterface interface
-type MockDevicePluginInterface struct {
+// MockDevicePluginImplementationInterface is a mock of DevicePluginImplementationInterface interface
+type MockDevicePluginImplementationInterface struct {
 	ctrl     *gomock.Controller
-	recorder *MockDevicePluginInterfaceMockRecorder
+	recorder *MockDevicePluginImplementationInterfaceMockRecorder
 }
 
-// MockDevicePluginInterfaceMockRecorder is the mock recorder for MockDevicePluginInterface
-type MockDevicePluginInterfaceMockRecorder struct {
-	mock *MockDevicePluginInterface
+// MockDevicePluginImplementationInterfaceMockRecorder is the mock recorder for MockDevicePluginImplementationInterface
+type MockDevicePluginImplementationInterfaceMockRecorder struct {
+	mock *MockDevicePluginImplementationInterface
 }
 
-// NewMockDevicePluginInterface creates a new mock instance
-func NewMockDevicePluginInterface(ctrl *gomock.Controller) *MockDevicePluginInterface {
-	mock := &MockDevicePluginInterface{ctrl: ctrl}
-	mock.recorder = &MockDevicePluginInterfaceMockRecorder{mock}
+// NewMockDevicePluginImplementationInterface creates a new mock instance
+func NewMockDevicePluginImplementationInterface(ctrl *gomock.Controller) *MockDevicePluginImplementationInterface {
+	mock := &MockDevicePluginImplementationInterface{ctrl: ctrl}
+	mock.recorder = &MockDevicePluginImplementationInterfaceMockRecorder{mock}
 	return mock
 }
 
 // EXPECT returns an object that allows the caller to indicate expected use
-func (m *MockDevicePluginInterface) EXPECT() *MockDevicePluginInterfaceMockRecorder {
+func (m *MockDevicePluginImplementationInterface) EXPECT() *MockDevicePluginImplementationInterfaceMockRecorder {
 	return m.recorder
 }
 
 // ListAndWatch mocks base method
-func (m *MockDevicePluginInterface) ListAndWatch(arg0 *v1alpha.Empty, arg1 v1alpha.DevicePlugin_ListAndWatchServer) error {
+func (m *MockDevicePluginImplementationInterface) ListAndWatch(arg0 *v1alpha.Empty, arg1 v1alpha.DevicePlugin_ListAndWatchServer) error {
 	ret := m.ctrl.Call(m, "ListAndWatch", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // ListAndWatch indicates an expected call of ListAndWatch
-func (mr *MockDevicePluginInterfaceMockRecorder) ListAndWatch(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAndWatch", reflect.TypeOf((*MockDevicePluginInterface)(nil).ListAndWatch), arg0, arg1)
+func (mr *MockDevicePluginImplementationInterfaceMockRecorder) ListAndWatch(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAndWatch", reflect.TypeOf((*MockDevicePluginImplementationInterface)(nil).ListAndWatch), arg0, arg1)
 }
 
 // Allocate mocks base method
-func (m *MockDevicePluginInterface) Allocate(arg0 context.Context, arg1 *v1alpha.AllocateRequest) (*v1alpha.AllocateResponse, error) {
+func (m *MockDevicePluginImplementationInterface) Allocate(arg0 context.Context, arg1 *v1alpha.AllocateRequest) (*v1alpha.AllocateResponse, error) {
 	ret := m.ctrl.Call(m, "Allocate", arg0, arg1)
 	ret0, _ := ret[0].(*v1alpha.AllocateResponse)
 	ret1, _ := ret[1].(error)
@@ -56,54 +56,30 @@ func (m *MockDevicePluginInterface) Allocate(arg0 context.Context, arg1 *v1alpha
 }
 
 // Allocate indicates an expected call of Allocate
-func (mr *MockDevicePluginInterfaceMockRecorder) Allocate(arg0, arg1 interface{}) *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allocate", reflect.TypeOf((*MockDevicePluginInterface)(nil).Allocate), arg0, arg1)
+func (mr *MockDevicePluginImplementationInterfaceMockRecorder) Allocate(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allocate", reflect.TypeOf((*MockDevicePluginImplementationInterface)(nil).Allocate), arg0, arg1)
 }
 
-// StartPlugin mocks base method
-func (m *MockDevicePluginInterface) StartPlugin() error {
-	ret := m.ctrl.Call(m, "StartPlugin")
+// Start mocks base method
+func (m *MockDevicePluginImplementationInterface) Start() error {
+	ret := m.ctrl.Call(m, "Start")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// StartPlugin indicates an expected call of StartPlugin
-func (mr *MockDevicePluginInterfaceMockRecorder) StartPlugin() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPlugin", reflect.TypeOf((*MockDevicePluginInterface)(nil).StartPlugin))
+// Start indicates an expected call of Start
+func (mr *MockDevicePluginImplementationInterfaceMockRecorder) Start() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockDevicePluginImplementationInterface)(nil).Start))
 }
 
-// StartServer mocks base method
-func (m *MockDevicePluginInterface) StartServer() error {
-	ret := m.ctrl.Call(m, "StartServer")
+// Stop mocks base method
+func (m *MockDevicePluginImplementationInterface) Stop() error {
+	ret := m.ctrl.Call(m, "Stop")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// StartServer indicates an expected call of StartServer
-func (mr *MockDevicePluginInterfaceMockRecorder) StartServer() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartServer", reflect.TypeOf((*MockDevicePluginInterface)(nil).StartServer))
-}
-
-// StopPlugin mocks base method
-func (m *MockDevicePluginInterface) StopPlugin() error {
-	ret := m.ctrl.Call(m, "StopPlugin")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StopPlugin indicates an expected call of StopPlugin
-func (mr *MockDevicePluginInterfaceMockRecorder) StopPlugin() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopPlugin", reflect.TypeOf((*MockDevicePluginInterface)(nil).StopPlugin))
-}
-
-// StopServer mocks base method
-func (m *MockDevicePluginInterface) StopServer() error {
-	ret := m.ctrl.Call(m, "StopServer")
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// StopServer indicates an expected call of StopServer
-func (mr *MockDevicePluginInterfaceMockRecorder) StopServer() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopServer", reflect.TypeOf((*MockDevicePluginInterface)(nil).StopServer))
+// Stop indicates an expected call of Stop
+func (mr *MockDevicePluginImplementationInterfaceMockRecorder) Stop() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockDevicePluginImplementationInterface)(nil).Stop))
 }

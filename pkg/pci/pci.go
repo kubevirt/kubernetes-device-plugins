@@ -9,16 +9,22 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
+)
+
+const (
+	resourceNamespace = "devices.kubevirt.io/"
 )
 
 // PCILister is the object responsible for discovering initial pool of devices and their allocation.
 type PCILister struct{}
 
+func (pci PCILister) GetResourceName() string {
+	return resourceNamespace
+}
+
 // Discovery discovers all PCI devices within the system.
-// TODO: hide implementation details ??
 func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
@@ -49,18 +55,11 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (pci PCILister) NewDevicePlugin(vendorID string) dpm.DevicePluginInterface {
+func (pci PCILister) NewDevicePlugin(vendorID string) dpm.DevicePluginImplementationInterface {
 	glog.V(3).Infof("Creating device plugin %s", vendorID)
-	ret := &VFIODevicePlugin{
-		dpm.DevicePlugin{
-			Socket:       pluginapi.DevicePluginPath + vendorID,
-			ResourceName: resourceNamespace + vendorID,
-		},
-		vendorID,
+	return &VFIODevicePlugin{
+		vendorID: vendorID,
 	}
-	ret.DevicePlugin.Deps = ret
-
-	return ret
 }
 
 // getIOMMUGroup finds device's IOMMU group.
