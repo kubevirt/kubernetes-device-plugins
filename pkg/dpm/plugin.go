@@ -20,8 +20,10 @@ type Message struct{}
 // Some function are provided by DevicePlugin structure, so only those missing need to be implemented.
 type DevicePluginInterface interface {
 	pluginapi.DevicePluginServer
-	Start() error
-	Stop() error
+	StartPlugin() error
+	StartServer() error
+	StopPlugin() error
+	StopServer() error
 }
 
 // DevicePlugin represents a gRPC server client/server.
@@ -36,8 +38,8 @@ type DevicePlugin struct {
 	Starting     sync.Mutex
 }
 
-// Start starts the gRPC server and registers the device plugin to Kubelet. Calling Start on started object is NOOP.
-func (dpi *DevicePlugin) Start() error {
+// StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling StartServer on started object is NOOP.
+func (dpi *DevicePlugin) StartServer() error {
 	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
 	dpi.Starting.Lock()
 	defer dpi.Starting.Unlock()
@@ -56,7 +58,7 @@ func (dpi *DevicePlugin) Start() error {
 
 	err = dpi.register(pluginapi.KubeletSocket, dpi.ResourceName)
 	if err != nil {
-		dpi.Stop()
+		dpi.StopServer()
 		return err
 	}
 
@@ -126,8 +128,8 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// Stop stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
-func (dpi *DevicePlugin) Stop() error {
+// StopServer stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
+func (dpi *DevicePlugin) StopServer() error {
 	if !dpi.Running {
 		glog.V(3).Info("Tried to stop stopped DPI")
 		return nil

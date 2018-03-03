@@ -54,14 +54,16 @@ HandleSignals:
 			for newPluginName, _ := range newPluginsSet {
 				if _, ok := pluginsMap[newPluginName]; !ok {
 					plugin := dpm.lister.NewDevicePlugin(newPluginName)
-					go plugin.Start()
+					go plugin.StartPlugin()
+					go plugin.StartServer()
 					pluginsMap[newPluginName] = plugin
 				}
 			}
 			// remove old
 			for pluginName, plugin := range pluginsMap {
 				if _, ok := newPluginsSet[pluginName]; !ok {
-					plugin.Stop()
+					plugin.StopServer()
+					plugin.StopPlugin()
 					delete(pluginsMap, pluginName)
 				}
 			}
@@ -69,13 +71,13 @@ HandleSignals:
 			if event.Name == pluginapi.KubeletSocket {
 				if event.Op&fsnotify.Create == fsnotify.Create {
 					for _, plugin := range pluginsMap {
-						plugin.Start()
+						plugin.StartServer()
 					}
 				}
 				// TODO: Kubelet doesn't really clean-up it's socket, so this is currently manual-testing thing. Could we solve Kubelet deaths better?
 				if event.Op&fsnotify.Remove == fsnotify.Remove {
 					for _, plugin := range pluginsMap {
-						plugin.Stop()
+						plugin.StopServer()
 					}
 				}
 			}
@@ -84,7 +86,8 @@ HandleSignals:
 			case syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
 				for _, plugin := range pluginsMap {
-					plugin.Stop()
+					plugin.StopServer()
+					plugin.StopPlugin()
 				}
 				break HandleSignals
 			}

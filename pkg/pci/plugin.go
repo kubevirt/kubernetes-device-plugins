@@ -40,6 +40,14 @@ func newDevicePlugin(vendorID string) *VFIODevicePlugin {
 	return ret
 }
 
+func (dpi *VFIODevicePlugin) StartPlugin() error {
+	return nil
+}
+
+func (dpi *VFIODevicePlugin) StopPlugin() error {
+	return nil
+}
+
 // ListAndWatch lists devices.
 func (dpi *VFIODevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	var devs []*pluginapi.Device

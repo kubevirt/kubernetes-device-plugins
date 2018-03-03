@@ -60,26 +60,50 @@ func (mr *MockDevicePluginInterfaceMockRecorder) Allocate(arg0, arg1 interface{}
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allocate", reflect.TypeOf((*MockDevicePluginInterface)(nil).Allocate), arg0, arg1)
 }
 
-// Start mocks base method
-func (m *MockDevicePluginInterface) Start() error {
-	ret := m.ctrl.Call(m, "Start")
+// StartPlugin mocks base method
+func (m *MockDevicePluginInterface) StartPlugin() error {
+	ret := m.ctrl.Call(m, "StartPlugin")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Start indicates an expected call of Start
-func (mr *MockDevicePluginInterfaceMockRecorder) Start() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockDevicePluginInterface)(nil).Start))
+// StartPlugin indicates an expected call of StartPlugin
+func (mr *MockDevicePluginInterfaceMockRecorder) StartPlugin() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartPlugin", reflect.TypeOf((*MockDevicePluginInterface)(nil).StartPlugin))
 }
 
-// Stop mocks base method
-func (m *MockDevicePluginInterface) Stop() error {
-	ret := m.ctrl.Call(m, "Stop")
+// StartServer mocks base method
+func (m *MockDevicePluginInterface) StartServer() error {
+	ret := m.ctrl.Call(m, "StartServer")
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// Stop indicates an expected call of Stop
-func (mr *MockDevicePluginInterfaceMockRecorder) Stop() *gomock.Call {
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stop", reflect.TypeOf((*MockDevicePluginInterface)(nil).Stop))
+// StartServer indicates an expected call of StartServer
+func (mr *MockDevicePluginInterfaceMockRecorder) StartServer() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StartServer", reflect.TypeOf((*MockDevicePluginInterface)(nil).StartServer))
+}
+
+// StopPlugin mocks base method
+func (m *MockDevicePluginInterface) StopPlugin() error {
+	ret := m.ctrl.Call(m, "StopPlugin")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopPlugin indicates an expected call of StopPlugin
+func (mr *MockDevicePluginInterfaceMockRecorder) StopPlugin() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopPlugin", reflect.TypeOf((*MockDevicePluginInterface)(nil).StopPlugin))
+}
+
+// StopServer mocks base method
+func (m *MockDevicePluginInterface) StopServer() error {
+	ret := m.ctrl.Call(m, "StopServer")
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StopServer indicates an expected call of StopServer
+func (mr *MockDevicePluginInterfaceMockRecorder) StopServer() *gomock.Call {
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StopServer", reflect.TypeOf((*MockDevicePluginInterface)(nil).StopServer))
 }
