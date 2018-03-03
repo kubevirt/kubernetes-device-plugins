@@ -16,7 +16,13 @@ import (
 
 type DevicePluginImplementationInterface interface {
 	pluginapi.DevicePluginServer
+}
+
+type DevicePluginImplementationStartInterface interface {
 	Start() error
+}
+
+type DevicePluginImplementationStopInterface interface {
 	Stop() error
 }
 

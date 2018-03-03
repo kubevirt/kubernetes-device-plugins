@@ -44,10 +44,6 @@ func (nbdp *NetworkBridgeDevicePlugin) Start() error {
 	return nil
 }
 
-func (dpi *NetworkBridgeDevicePlugin) Stop() error {
-	return nil
-}
-
 func createFakeDevice() error {
 	_, stat_err := os.Stat(fakeDevicePath)
 	if stat_err == nil {
