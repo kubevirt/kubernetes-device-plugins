@@ -43,13 +43,8 @@ func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginList) {
 	pluginListCh <- plugins
 }
 
-// newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(deviceID))
-}
-
 // newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
-func newDevicePlugin(deviceID string) *KVMDevicePlugin {
+func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	ret := &KVMDevicePlugin{
 		counter: 0,
