@@ -50,14 +50,20 @@ func newDevicePlugin(bridge string) *NetworkBridgeDevicePlugin {
 	}
 	ret.DevicePlugin.Deps = ret
 
-	// TODO: This should be triggered by start()
+	return ret
+}
+
+func (nbdp *NetworkBridgeDevicePlugin) StartPlugin() error {
 	err := createFakeDevice()
 	if err != nil {
 		glog.Exitf("Failed to create fake device: %s", err)
 	}
-	go ret.attachPods()
+	go nbdp.attachPods()
+	return nil
+}
 
-	return ret
+func (dpi *NetworkBridgeDevicePlugin) StopPlugin() error {
+	return nil
 }
 
 func createFakeDevice() error {

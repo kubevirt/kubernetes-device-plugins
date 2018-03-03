@@ -20,8 +20,10 @@ func TestDevicePluginManagerFlow(t *testing.T) {
 			pluginListCh <- PluginList{"a"}
 		})
 	lister.EXPECT().NewDevicePlugin("a").Return(DevicePluginInterface(plugin))
-	plugin.EXPECT().Start()
-	plugin.EXPECT().Stop()
+	plugin.EXPECT().StartPlugin()
+	plugin.EXPECT().StartServer()
+	plugin.EXPECT().StopPlugin()
+	plugin.EXPECT().StopServer()
 
 	manager := NewDevicePluginManager(lister)
 	go func() {

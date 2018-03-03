@@ -61,6 +61,14 @@ func newDevicePlugin(deviceID string) *KVMDevicePlugin {
 	return ret
 }
 
+func (dpi *KVMDevicePlugin) StartPlugin() error {
+	return nil
+}
+
+func (dpi *KVMDevicePlugin) StopPlugin() error {
+	return nil
+}
+
 // ListAndWatch sends gRPC stream of devices.
 func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	// Initialize with one available device
