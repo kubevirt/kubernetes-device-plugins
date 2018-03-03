@@ -14,8 +14,6 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-type Message struct{}
-
 // DevicePluginInterface is the interface that each device plugin implementation must implement.
 // Some function are provided by DevicePlugin structure, so only those missing need to be implemented.
 type DevicePluginInterface interface {
@@ -28,12 +26,10 @@ type DevicePluginInterface interface {
 
 // DevicePlugin represents a gRPC server client/server.
 type DevicePlugin struct {
-	Devs         []*pluginapi.Device
 	Socket       string
 	Server       *grpc.Server
 	ResourceName string
 	Deps         DevicePluginInterface
-	Update       chan Message
 	Running      bool
 	Starting     sync.Mutex
 }
