@@ -16,7 +16,7 @@ const (
 
 type BridgeLister struct{}
 
-func (bl BridgeLister) Discover() *dpm.PluginList {
+func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
 	var plugins = make(dpm.PluginList, 0)
 
 	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
@@ -29,7 +29,7 @@ func (bl BridgeLister) Discover() *dpm.PluginList {
 		plugins = append(plugins, bridgeName)
 	}
 
-	return &plugins
+	pluginListCh <- plugins
 }
 
 func (bl BridgeLister) NewDevicePlugin(bridgeName string) dpm.DevicePluginInterface {

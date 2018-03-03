@@ -27,7 +27,8 @@ type KVMDevicePlugin struct {
 }
 
 // Discovery discovers all KVM devices within the system.
-func (kvm KVMLister) Discover() *dpm.PluginList {
+// TODO: handle stop channel
+func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginList) {
 	var plugins = make(dpm.PluginList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
@@ -35,7 +36,7 @@ func (kvm KVMLister) Discover() *dpm.PluginList {
 		plugins = append(plugins, "kvm")
 	}
 
-	return &plugins
+	pluginListCh <- plugins
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
