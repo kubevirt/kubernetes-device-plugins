@@ -13,11 +13,9 @@ import (
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dockerutils"
-	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (
-	resourceNamespace   = "bridge.network.kubevirt.io/"
 	fakeDevicePath      = "/var/run/device-plugin-network-bridge-fakedev"
 	nicsPoolSize        = 100
 	interfaceNameLen    = 15
@@ -27,7 +25,6 @@ const (
 )
 
 type NetworkBridgeDevicePlugin struct {
-	dpm.DevicePlugin
 	bridge       string
 	assignmentCh chan *Assignment
 }
@@ -38,7 +35,7 @@ type Assignment struct {
 	Created       time.Time
 }
 
-func (nbdp *NetworkBridgeDevicePlugin) StartPlugin() error {
+func (nbdp *NetworkBridgeDevicePlugin) Start() error {
 	err := createFakeDevice()
 	if err != nil {
 		glog.Exitf("Failed to create fake device: %s", err)
@@ -47,7 +44,7 @@ func (nbdp *NetworkBridgeDevicePlugin) StartPlugin() error {
 	return nil
 }
 
-func (dpi *NetworkBridgeDevicePlugin) StopPlugin() error {
+func (dpi *NetworkBridgeDevicePlugin) Stop() error {
 	return nil
 }
 

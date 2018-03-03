@@ -13,12 +13,12 @@ import (
 
 // DevicePluginManager is container for 1 or more DevicePlugins.
 type DevicePluginManager struct {
-	lister PluginLister
+	lister PluginListerInterface
 }
 
 // NewDevicePluginManager is the canonical way of initializing DevicePluginManager. It sets up the infrastructure for
 // the manager to correctly handle signals and Kubelet socket watch. TODO: not anymore
-func NewDevicePluginManager(lister PluginLister) *DevicePluginManager {
+func NewDevicePluginManager(lister PluginListerInterface) *DevicePluginManager {
 	dpm := &DevicePluginManager{
 		lister: lister,
 	}
@@ -27,7 +27,7 @@ func NewDevicePluginManager(lister PluginLister) *DevicePluginManager {
 
 // Run starts the DevicePluginManager.
 func (dpm *DevicePluginManager) Run() {
-	var pluginsMap = make(map[string]DevicePluginInterface)
+	var pluginsMap = make(map[string]DevicePlugin)
 
 	// First important signal channel is the os signal channel. We only care about (somewhat) small subset of available signals.
 	signalCh := make(chan os.Signal, 1)
@@ -53,8 +53,8 @@ HandleSignals:
 			// add new
 			for newPluginName, _ := range newPluginsSet {
 				if _, ok := pluginsMap[newPluginName]; !ok {
-					plugin := dpm.lister.NewDevicePlugin(newPluginName)
-					go plugin.StartPlugin()
+					plugin := NewDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
+					go plugin.DevicePluginImplementation.Start()
 					go plugin.StartServer()
 					pluginsMap[newPluginName] = plugin
 				}
@@ -63,7 +63,7 @@ HandleSignals:
 			for pluginName, plugin := range pluginsMap {
 				if _, ok := newPluginsSet[pluginName]; !ok {
 					plugin.StopServer()
-					plugin.StopPlugin()
+					plugin.DevicePluginImplementation.Stop()
 					delete(pluginsMap, pluginName)
 				}
 			}
@@ -87,7 +87,7 @@ HandleSignals:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
 				for _, plugin := range pluginsMap {
 					plugin.StopServer()
-					plugin.StopPlugin()
+					plugin.DevicePluginImplementation.Stop()
 				}
 				break HandleSignals
 			}

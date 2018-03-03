@@ -24,10 +24,13 @@ type message struct{}
 
 // KVMDevicePlugin is an implementation of DevicePlugin that is capable of exposing /dev/kvm to containers.
 type KVMDevicePlugin struct {
-	dpm.DevicePlugin
 	counter int
 	devs    []*pluginapi.Device
 	update  chan message
+}
+
+func (kvm KVMLister) GetResourceName() string {
+	return resourceNamespace
 }
 
 // Discovery discovers all KVM devices within the system.
@@ -44,27 +47,20 @@ func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginList) {
 }
 
 // newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
-func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
+func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginImplementationInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
-	ret := &KVMDevicePlugin{
+	return &KVMDevicePlugin{
 		counter: 0,
 		devs:    make([]*pluginapi.Device, 0),
 		update:  make(chan message),
 	}
-	ret.DevicePlugin = dpm.DevicePlugin{
-		Socket:       pluginapi.DevicePluginPath + deviceID,
-		ResourceName: resourceNamespace + deviceID,
-	}
-	ret.DevicePlugin.Deps = ret
-
-	return ret
 }
 
-func (dpi *KVMDevicePlugin) StartPlugin() error {
+func (dpi *KVMDevicePlugin) Start() error {
 	return nil
 }
 
-func (dpi *KVMDevicePlugin) StopPlugin() error {
+func (dpi *KVMDevicePlugin) Stop() error {
 	return nil
 }
 
