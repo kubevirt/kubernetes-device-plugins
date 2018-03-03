@@ -56,14 +56,6 @@ func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginImplementa
 	}
 }
 
-func (dpi *KVMDevicePlugin) Start() error {
-	return nil
-}
-
-func (dpi *KVMDevicePlugin) Stop() error {
-	return nil
-}
-
 // ListAndWatch sends gRPC stream of devices.
 func (dpi *KVMDevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	// Initialize with one available device

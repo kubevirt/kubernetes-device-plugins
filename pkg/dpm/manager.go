@@ -54,7 +54,7 @@ HandleSignals:
 			for newPluginName, _ := range newPluginsSet {
 				if _, ok := pluginsMap[newPluginName]; !ok {
 					plugin := NewDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
-					go plugin.DevicePluginImplementation.Start()
+					go startPlugin(plugin)
 					go plugin.StartServer()
 					pluginsMap[newPluginName] = plugin
 				}
@@ -63,7 +63,7 @@ HandleSignals:
 			for pluginName, plugin := range pluginsMap {
 				if _, ok := newPluginsSet[pluginName]; !ok {
 					plugin.StopServer()
-					plugin.DevicePluginImplementation.Stop()
+					go stopPlugin(plugin)
 					delete(pluginsMap, pluginName)
 				}
 			}
@@ -87,10 +87,22 @@ HandleSignals:
 				glog.V(3).Infof("Received signal \"%v\", shutting down", s)
 				for _, plugin := range pluginsMap {
 					plugin.StopServer()
-					plugin.DevicePluginImplementation.Stop()
+					go stopPlugin(plugin)
 				}
 				break HandleSignals
 			}
 		}
+	}
+}
+
+func startPlugin(plugin DevicePlugin) {
+	if devicePluginImplementation, ok := plugin.DevicePluginImplementation.(DevicePluginImplementationStartInterface); ok {
+		devicePluginImplementation.Start()
+	}
+}
+
+func stopPlugin(plugin DevicePlugin) {
+	if devicePluginImplementation, ok := plugin.DevicePluginImplementation.(DevicePluginImplementationStopInterface); ok {
+		devicePluginImplementation.Stop()
 	}
 }

@@ -18,14 +18,6 @@ type VFIODevicePlugin struct {
 
 var iommuMutex = &sync.Mutex{}
 
-func (dpi *VFIODevicePlugin) Start() error {
-	return nil
-}
-
-func (dpi *VFIODevicePlugin) Stop() error {
-	return nil
-}
-
 // ListAndWatch lists devices.
 func (dpi *VFIODevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	var devs []*pluginapi.Device
