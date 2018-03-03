@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
@@ -48,8 +49,18 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (pci PCILister) NewDevicePlugin(deviceID string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(deviceID))
+func (pci PCILister) NewDevicePlugin(vendorID string) dpm.DevicePluginInterface {
+	glog.V(3).Infof("Creating device plugin %s", vendorID)
+	ret := &VFIODevicePlugin{
+		dpm.DevicePlugin{
+			Socket:       pluginapi.DevicePluginPath + vendorID,
+			ResourceName: resourceNamespace + vendorID,
+		},
+		vendorID,
+	}
+	ret.DevicePlugin.Deps = ret
+
+	return ret
 }
 
 // getIOMMUGroup finds device's IOMMU group.

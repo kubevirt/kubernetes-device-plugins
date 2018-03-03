@@ -25,21 +25,6 @@ type VFIODevicePlugin struct {
 
 var iommuMutex = &sync.Mutex{}
 
-// newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func newDevicePlugin(vendorID string) *VFIODevicePlugin {
-	glog.V(3).Infof("Creating device plugin %s", vendorID)
-	ret := &VFIODevicePlugin{
-		dpm.DevicePlugin{
-			Socket:       pluginapi.DevicePluginPath + vendorID,
-			ResourceName: resourceNamespace + vendorID,
-		},
-		vendorID,
-	}
-	ret.DevicePlugin.Deps = ret
-
-	return ret
-}
-
 func (dpi *VFIODevicePlugin) StartPlugin() error {
 	return nil
 }

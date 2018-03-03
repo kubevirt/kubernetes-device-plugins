@@ -38,21 +38,6 @@ type Assignment struct {
 	Created       time.Time
 }
 
-func newDevicePlugin(bridge string) *NetworkBridgeDevicePlugin {
-	glog.V(3).Infof("Creating device plugin %s", bridge)
-	ret := &NetworkBridgeDevicePlugin{
-		dpm.DevicePlugin{
-			Socket:       pluginapi.DevicePluginPath + bridge,
-			ResourceName: resourceNamespace + bridge,
-		},
-		bridge,
-		make(chan *Assignment),
-	}
-	ret.DevicePlugin.Deps = ret
-
-	return ret
-}
-
 func (nbdp *NetworkBridgeDevicePlugin) StartPlugin() error {
 	err := createFakeDevice()
 	if err != nil {

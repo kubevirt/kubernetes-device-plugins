@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
@@ -32,6 +33,17 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
 	pluginListCh <- plugins
 }
 
-func (bl BridgeLister) NewDevicePlugin(bridgeName string) dpm.DevicePluginInterface {
-	return dpm.DevicePluginInterface(newDevicePlugin(bridgeName))
+func (bl BridgeLister) NewDevicePlugin(bridge string) dpm.DevicePluginInterface {
+	glog.V(3).Infof("Creating device plugin %s", bridge)
+	ret := &NetworkBridgeDevicePlugin{
+		dpm.DevicePlugin{
+			Socket:       pluginapi.DevicePluginPath + bridge,
+			ResourceName: resourceNamespace + bridge,
+		},
+		bridge,
+		make(chan *Assignment),
+	}
+	ret.DevicePlugin.Deps = ret
+
+	return ret
 }
