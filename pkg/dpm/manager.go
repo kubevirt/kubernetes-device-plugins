@@ -12,22 +12,22 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-// DevicePluginManager is container for 1 or more DevicePlugins.
-type DevicePluginManager struct {
-	lister PluginListerInterface
+// Manager is container for 1 or more DevicePlugins.
+type Manager struct {
+	lister ListerInterface
 }
 
-// NewDevicePluginManager is the canonical way of initializing DevicePluginManager. It sets up the infrastructure for
-// the manager to correctly handle signals and Kubelet socket watch. TODO: not anymore
-func NewDevicePluginManager(lister PluginListerInterface) *DevicePluginManager {
-	dpm := &DevicePluginManager{
+// NewManager is the canonical way of initializing Manager. It sets up the infrastructure for
+// the manager to correctly handle signals and Kubelet socket watch.
+func NewManager(lister ListerInterface) *Manager {
+	dpm := &Manager{
 		lister: lister,
 	}
 	return dpm
 }
 
-// Run starts the DevicePluginManager.
-func (dpm *DevicePluginManager) Run() {
+// Run starts the Manager.
+func (dpm *Manager) Run() {
 	glog.V(3).Info("Starting device plugin manager")
 
 	var pluginsMap = make(map[string]devicePlugin)
@@ -44,7 +44,7 @@ func (dpm *DevicePluginManager) Run() {
 	fsWatcher.Add(pluginapi.DevicePluginPath)
 
 	glog.V(3).Info("Starting Discovery on new plugins")
-	pluginsCh := make(chan PluginList)
+	pluginsCh := make(chan PluginNamesList)
 	defer close(pluginsCh)
 	go dpm.lister.Discover(pluginsCh)
 
@@ -77,7 +77,7 @@ HandleSignals:
 	}
 }
 
-func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]devicePlugin, newPluginsList PluginList) {
+func (dpm *Manager) handleNewPlugins(currentPluginsMap map[string]devicePlugin, newPluginsList PluginNamesList) {
 	var wg sync.WaitGroup
 
 	newPluginsSet := make(map[string]bool)
@@ -91,7 +91,7 @@ func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]de
 		go func() {
 			if _, ok := currentPluginsMap[newPluginName]; !ok {
 				glog.V(3).Infof("Adding a new plugin \"%s\"", newPluginName)
-				plugin := newDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
+				plugin := newDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewPlugin(newPluginName))
 				startUpPlugin(newPluginName, plugin)
 				currentPluginsMap[newPluginName] = plugin
 			}
@@ -114,7 +114,7 @@ func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]de
 	wg.Wait()
 }
 
-func (dpm *DevicePluginManager) startPluginServers(pluginsMap map[string]devicePlugin) {
+func (dpm *Manager) startPluginServers(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -130,7 +130,7 @@ func (dpm *DevicePluginManager) startPluginServers(pluginsMap map[string]deviceP
 	wg.Wait()
 }
 
-func (dpm *DevicePluginManager) stopPluginServers(pluginsMap map[string]devicePlugin) {
+func (dpm *Manager) stopPluginServers(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -145,7 +145,7 @@ func (dpm *DevicePluginManager) stopPluginServers(pluginsMap map[string]devicePl
 	}
 	wg.Wait()
 }
-func (dpm *DevicePluginManager) shutDownPlugins(pluginsMap map[string]devicePlugin) {
+func (dpm *Manager) shutDownPlugins(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -159,7 +159,7 @@ func (dpm *DevicePluginManager) shutDownPlugins(pluginsMap map[string]devicePlug
 }
 
 func startUpPlugin(pluginName string, plugin devicePlugin) {
-	if devicePluginImplementation, ok := plugin.DevicePluginImplementation.(DevicePluginImplementationStartInterface); ok {
+	if devicePluginImplementation, ok := plugin.DevicePlugin.(PluginInterfaceStart); ok {
 		err := devicePluginImplementation.Start()
 		if err != nil {
 			glog.Errorf("Failed to start plugin \"%s\": %s", pluginName, err)
@@ -176,7 +176,7 @@ func shutDownPlugin(pluginName string, plugin devicePlugin) {
 	if err != nil {
 		glog.Errorf("Failed to stop plugin \"%s\": %s", pluginName, err)
 	}
-	if devicePluginImplementation, ok := plugin.DevicePluginImplementation.(DevicePluginImplementationStopInterface); ok {
+	if devicePluginImplementation, ok := plugin.DevicePlugin.(PluginInterfaceStop); ok {
 		err := devicePluginImplementation.Stop()
 		if err != nil {
 			glog.Errorf("Failed to stop plugin \"%s\": %s", pluginName, err)

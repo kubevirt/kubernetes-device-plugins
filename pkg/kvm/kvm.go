@@ -35,8 +35,8 @@ func (kvm KVMLister) GetResourceName() string {
 
 // Discovery discovers all KVM devices within the system.
 // TODO: handle stop channel
-func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginList) {
-	var plugins = make(dpm.PluginList, 0)
+func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNamesList) {
+	var plugins = make(dpm.PluginNamesList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
 		glog.V(3).Infof("Discovered %s", KVMPath)
@@ -47,7 +47,7 @@ func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginList) {
 }
 
 // newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
-func (kvm KVMLister) NewDevicePlugin(deviceID string) dpm.DevicePluginImplementationInterface {
+func (kvm KVMLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	return &KVMDevicePlugin{
 		counter: 0,

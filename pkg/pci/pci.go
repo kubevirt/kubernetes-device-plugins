@@ -25,7 +25,7 @@ func (pci PCILister) GetResourceName() string {
 }
 
 // Discovery discovers all PCI devices within the system.
-func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
+func (pci PCILister) Discover(pluginListCh chan dpm.PluginNamesList) {
 	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
 		glog.V(3).Infof("Discovering device in %s", path)
@@ -45,7 +45,7 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 		return nil
 	})
 
-	var plugins = make(dpm.PluginList, 0)
+	var plugins = make(dpm.PluginNamesList, 0)
 	for deviceClass, _ := range devicesSet {
 		plugins = append(plugins, deviceClass)
 	}
@@ -55,7 +55,7 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginList) {
 }
 
 // newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
-func (pci PCILister) NewDevicePlugin(vendorID string) dpm.DevicePluginImplementationInterface {
+func (pci PCILister) NewPlugin(vendorID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", vendorID)
 	return &VFIODevicePlugin{
 		vendorID: vendorID,

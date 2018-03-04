@@ -43,6 +43,6 @@ func main() {
 		}
 	}
 
-	manager := dpm.NewDevicePluginManager(pci.PCILister{})
+	manager := dpm.NewManager(pci.PCILister{})
 	manager.Run()
 }
