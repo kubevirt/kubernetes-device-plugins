@@ -48,12 +48,12 @@ type devicePlugin struct {
 	Starting         sync.Mutex
 }
 
-func newDevicePlugin(resourceName string, deviceName string, devicePluginImplementation PluginInterface) devicePlugin {
+func newDevicePlugin(resourceNamespace string, resourceLastName string, devicePluginImplementation PluginInterface) devicePlugin {
 	return devicePlugin{
 		DevicePlugin:     devicePluginImplementation,
-		Socket:           pluginapi.DevicePluginPath + resourceName + "_" + deviceName,
-		ResourceName:     resourceName + "/" + deviceName,
-		ResourceLastName: deviceName,
+		Socket:           pluginapi.DevicePluginPath + resourceNamespace + "_" + resourceLastName,
+		ResourceName:     resourceNamespace + "/" + resourceLastName,
+		ResourceLastName: resourceLastName,
 	}
 }
 
