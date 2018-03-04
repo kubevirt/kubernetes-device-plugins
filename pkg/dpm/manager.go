@@ -5,11 +5,17 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/golang/glog"
 
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+)
+
+const (
+	startPluginServerRetries   = 3
+	startPluginServerRetryWait = 3 * time.Second
 )
 
 // Manager contains the main machinery of this framework. It uses user defined lister to monitor
@@ -183,9 +189,16 @@ func shutDownPlugin(pluginLastName string, plugin devicePlugin) {
 }
 
 func startPluginServer(pluginLastName string, plugin devicePlugin) {
-	err := plugin.StartServer()
-	if err != nil {
-		glog.Errorf("Failed to start plugin server \"%s\": %s", pluginLastName, err)
+	for i := 1; i <= startPluginServerRetries; i++ {
+		err := plugin.StartServer()
+		if err == nil {
+			return
+		} else if i == startPluginServerRetries {
+			glog.V(3).Infof("Failed to start plugin server \"%s\", within given tries: %s", pluginLastName, err)
+		} else {
+			glog.Errorf("Failed to start plugin server \"%s\", waiting %d before next try: %s", pluginLastName, startPluginServerRetryWait, err)
+			time.Sleep(startPluginServerRetryWait)
+		}
 	}
 }
 
