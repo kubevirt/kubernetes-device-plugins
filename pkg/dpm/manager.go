@@ -162,6 +162,7 @@ func (dpm *Manager) shutDownPlugins(pluginsMap map[string]devicePlugin) {
 		go func() {
 			shutDownPlugin(pluginLastName, plugin)
 			delete(pluginsMap, pluginLastName)
+			wg.Done()
 		}()
 	}
 	wg.Wait()
