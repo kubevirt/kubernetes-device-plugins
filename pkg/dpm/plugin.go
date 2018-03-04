@@ -39,26 +39,28 @@ type PluginInterfaceStop interface {
 
 // DevicePlugin represents a gRPC server client/server.
 type devicePlugin struct {
-	DevicePlugin PluginInterface
-	ResourceName string
-	Socket       string
-	Server       *grpc.Server
-	Running      bool
-	Starting     sync.Mutex
+	DevicePlugin     PluginInterface
+	ResourceName     string
+	ResourceLastName string
+	Socket           string
+	Server           *grpc.Server
+	Running          bool
+	Starting         sync.Mutex
 }
 
 func newDevicePlugin(resourceName string, deviceName string, devicePluginImplementation PluginInterface) devicePlugin {
 	return devicePlugin{
-		DevicePlugin: devicePluginImplementation,
-		Socket:       pluginapi.DevicePluginPath + resourceName + "_" + deviceName,
-		ResourceName: resourceName + "/" + deviceName,
+		DevicePlugin:     devicePluginImplementation,
+		Socket:           pluginapi.DevicePluginPath + resourceName + "_" + deviceName,
+		ResourceName:     resourceName + "/" + deviceName,
+		ResourceLastName: deviceName,
 	}
 }
 
 // StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling
 // StartServer on started object is NOOP.
 func (dpi *devicePlugin) StartServer() error {
-	glog.V(3).Info("Starting plugin server")
+	glog.V(3).Infof("%s: Starting plugin server", dpi.ResourceLastName)
 
 	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid
 	// that, let's make plugins startup a critical section.
@@ -78,7 +80,7 @@ func (dpi *devicePlugin) StartServer() error {
 
 	dpi.Running = true
 
-	err = dpi.register(pluginapi.KubeletSocket, dpi.ResourceName)
+	err = dpi.register()
 	if err != nil {
 		dpi.StopServer()
 		return err
@@ -89,17 +91,17 @@ func (dpi *devicePlugin) StartServer() error {
 
 // serve starts the gRPC server of the device plugin.
 func (dpi *devicePlugin) serve() error {
-	glog.V(3).Info("Starting the DPI gRPC server")
+	glog.V(3).Infof("%s: Starting the DPI gRPC server", dpi.ResourceLastName)
 
 	err := dpi.cleanup()
 	if err != nil {
-		glog.Errorf("Failed to setup a DPI gRPC server: %s", err)
+		glog.Errorf("%s: Failed to setup a DPI gRPC server: %s", dpi.ResourceLastName, err)
 		return err
 	}
 
 	sock, err := net.Listen("unix", dpi.Socket)
 	if err != nil {
-		glog.Errorf("Failed to setup a DPI gRPC server: %s", err)
+		glog.Errorf("%s: Failed to setup a DPI gRPC server: %s", dpi.ResourceLastName, err)
 		return err
 	}
 
@@ -107,7 +109,7 @@ func (dpi *devicePlugin) serve() error {
 	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.DevicePlugin)
 
 	go dpi.Server.Serve(sock)
-	glog.V(3).Info("Serving requests...")
+	glog.V(3).Infof("%s: Serving requests...", dpi.ResourceLastName)
 	// Wait till grpc server is ready.
 	for i := 0; i < 10; i++ {
 		services := dpi.Server.GetServiceInfo()
@@ -120,32 +122,32 @@ func (dpi *devicePlugin) serve() error {
 	return nil
 }
 
-// register registers the device plugin (as gRPC client call) for the given resourceName with
+// register registers the device plugin (as gRPC client call) for the given ResourceName with
 // Kubelet DPI infrastructure.
-func (dpi *devicePlugin) register(kubeletEndpoint, resourceName string) error {
-	glog.V(3).Info("Registering the DPI with Kubelet")
+func (dpi *devicePlugin) register() error {
+	glog.V(3).Infof("%s: Registering the DPI with Kubelet", dpi.ResourceLastName)
 
-	conn, err := grpc.Dial(kubeletEndpoint, grpc.WithInsecure(),
+	conn, err := grpc.Dial(pluginapi.KubeletSocket, grpc.WithInsecure(),
 		grpc.WithDialer(func(addr string, timeout time.Duration) (net.Conn, error) {
 			return net.DialTimeout("unix", addr, timeout)
 		}))
 	defer conn.Close()
 	if err != nil {
-		glog.Errorf("Could not dial gRPC: %s", err)
+		glog.Errorf("%s: Could not dial gRPC: %s", dpi.ResourceLastName, err)
 		return err
 	}
 	client := pluginapi.NewRegistrationClient(conn)
-	glog.Infof("Registration for endpoint %s resourceName %s", path.Base(dpi.Socket), resourceName)
+	glog.Infof("%s: Registration for endpoint %s", dpi.ResourceLastName, path.Base(dpi.Socket))
 	reqt := &pluginapi.RegisterRequest{
 		Version:      pluginapi.Version,
 		Endpoint:     path.Base(dpi.Socket),
-		ResourceName: resourceName,
+		ResourceName: dpi.ResourceName,
 	}
 
 	_, err = client.Register(context.Background(), reqt)
 	if err != nil {
-		glog.Errorf("Registration failed: %s", err)
-		glog.Errorf("Make sure that the DevicePlugins feature gate is enabled")
+		glog.Errorf("%s: Registration failed: %s", dpi.ResourceLastName, err)
+		glog.Errorf("%s: Make sure that the DevicePlugins feature gate is enabled and kubelet running", dpi.ResourceLastName)
 		return err
 	}
 	return nil
@@ -154,14 +156,14 @@ func (dpi *devicePlugin) register(kubeletEndpoint, resourceName string) error {
 // StopServer stops the gRPC server. Trying to stop already stopped plugin emits an info-level
 // log message.
 func (dpi *devicePlugin) StopServer() error {
-	glog.V(3).Info("Stopping plugin server")
+	glog.V(3).Infof("%s: Stopping plugin server", dpi.ResourceLastName)
 
 	if !dpi.Running {
-		glog.V(3).Info("Tried to stop stopped DPI")
+		glog.V(3).Infof("%s: Tried to stop stopped DPI", dpi.ResourceLastName)
 		return nil
 	}
 
-	glog.V(3).Info("Stopping the DPI gRPC server")
+	glog.V(3).Infof("%s: Stopping the DPI gRPC server", dpi.ResourceLastName)
 	dpi.Server.Stop()
 	dpi.Running = false
 
@@ -171,7 +173,7 @@ func (dpi *devicePlugin) StopServer() error {
 // cleanup is a helper to remove DPI's socket.
 func (dpi *devicePlugin) cleanup() error {
 	if err := os.Remove(dpi.Socket); err != nil && !os.IsNotExist(err) {
-		glog.Errorf("Could not clean up socket %s: %s", dpi.Socket, err)
+		glog.Errorf("%s: Could not clean up socket %s: %s", dpi.ResourceLastName, dpi.Socket, err)
 		return err
 	}
 
