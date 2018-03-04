@@ -14,18 +14,18 @@ import (
 )
 
 const (
-	resourceNamespace = "devices.kubevirt.io/"
+	resourceNamespace = "devices.kubevirt.io"
 )
 
 // PCILister is the object responsible for discovering initial pool of devices and their allocation.
 type PCILister struct{}
 
-func (pci PCILister) GetResourceName() string {
+func (pci PCILister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
-// Discovery discovers all PCI devices within the system.
-func (pci PCILister) Discover(pluginListCh chan dpm.PluginNamesList) {
+// Discover discovers all PCI devices within the system.
+func (pci PCILister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
 	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
 		glog.V(3).Infof("Discovering device in %s", path)
@@ -45,7 +45,7 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginNamesList) {
 		return nil
 	})
 
-	var plugins = make(dpm.PluginNamesList, 0)
+	var plugins = make(dpm.ResourceLastNamesList, 0)
 	for deviceClass, _ := range devicesSet {
 		plugins = append(plugins, deviceClass)
 	}
@@ -54,7 +54,7 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginNamesList) {
 	pluginListCh <- plugins
 }
 
-// newDevicePlugin creates a DevicePlugin for specific deviceID, using deviceIDs as initial device "pool".
+// NewPlugin creates a device plugin for specific deviceID, using deviceIDs as initial device "pool".
 func (pci PCILister) NewPlugin(vendorID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", vendorID)
 	return &VFIODevicePlugin{

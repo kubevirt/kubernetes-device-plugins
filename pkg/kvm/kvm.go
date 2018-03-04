@@ -14,7 +14,7 @@ import (
 const (
 	KVMPath           = "/dev/kvm"
 	KVMName           = "kvm"
-	resourceNamespace = "devices.kubevirt.io/"
+	resourceNamespace = "devices.kubevirt.io"
 )
 
 // KVMLister is the object responsible for discovering initial pool of devices and their allocation.
@@ -29,14 +29,13 @@ type KVMDevicePlugin struct {
 	update  chan message
 }
 
-func (kvm KVMLister) GetResourceName() string {
+func (kvm KVMLister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
 // Discovery discovers all KVM devices within the system.
-// TODO: handle stop channel
-func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNamesList) {
-	var plugins = make(dpm.PluginNamesList, 0)
+func (kvm KVMLister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
+	var plugins = make(dpm.ResourceLastNamesList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
 		glog.V(3).Infof("Discovered %s", KVMPath)
@@ -46,7 +45,7 @@ func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNamesList) {
 	pluginListCh <- plugins
 }
 
-// newDevicePlugin is a helper for NewDevicePlugin call. It has been separated to ease interface checking.
+// NewPlugin initializes new device plugin with KVM specific attributes.
 func (kvm KVMLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	return &KVMDevicePlugin{
