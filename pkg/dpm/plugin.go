@@ -46,6 +46,8 @@ func NewDevicePlugin(resourceName string, deviceName string, devicePluginImpleme
 
 // StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling StartServer on started object is NOOP.
 func (dpi *DevicePlugin) StartServer() error {
+	glog.V(3).Info("Starting plugin server")
+
 	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
 	dpi.Starting.Lock()
 	defer dpi.Starting.Unlock()
@@ -136,6 +138,8 @@ func (dpi *DevicePlugin) register(kubeletEndpoint, resourceName string) error {
 
 // StopServer stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
 func (dpi *DevicePlugin) StopServer() error {
+	glog.V(3).Info("Stopping plugin server")
+
 	if !dpi.Running {
 		glog.V(3).Info("Tried to stop stopped DPI")
 		return nil
