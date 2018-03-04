@@ -129,10 +129,7 @@ func (dpm *Manager) startPluginServers(pluginsMap map[string]devicePlugin) {
 	for pluginLastName, plugin := range pluginsMap {
 		wg.Add(1)
 		go func() {
-			err := plugin.StartServer()
-			if err != nil {
-				glog.Errorf("Failed to start plugin server \"%s\": %s", pluginLastName, err)
-			}
+			startPluginServer(pluginLastName, plugin)
 			wg.Done()
 		}()
 	}
@@ -145,15 +142,12 @@ func (dpm *Manager) stopPluginServers(pluginsMap map[string]devicePlugin) {
 	for pluginLastName, plugin := range pluginsMap {
 		wg.Add(1)
 		go func() {
-			err := plugin.StopServer()
-			if err != nil {
-				glog.Errorf("Failed to stop plugin server \"%s\": %s", pluginLastName, err)
-			}
-			wg.Done()
+			stopPluginServer(pluginLastName, plugin)
 		}()
 	}
 	wg.Wait()
 }
+
 func (dpm *Manager) shutDownPlugins(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
@@ -175,21 +169,29 @@ func startUpPlugin(pluginLastName string, plugin devicePlugin) {
 			glog.Errorf("Failed to start plugin \"%s\": %s", pluginLastName, err)
 		}
 	}
+	startPluginServer(pluginLastName, plugin)
+}
+
+func shutDownPlugin(pluginLastName string, plugin devicePlugin) {
+	stopPluginServer(pluginLastName, plugin)
+	if devicePluginImplementation, ok := plugin.DevicePlugin.(PluginInterfaceStop); ok {
+		err := devicePluginImplementation.Stop()
+		if err != nil {
+			glog.Errorf("Failed to stop plugin \"%s\": %s", pluginLastName, err)
+		}
+	}
+}
+
+func startPluginServer(pluginLastName string, plugin devicePlugin) {
 	err := plugin.StartServer()
 	if err != nil {
 		glog.Errorf("Failed to start plugin server \"%s\": %s", pluginLastName, err)
 	}
 }
 
-func shutDownPlugin(pluginLastName string, plugin devicePlugin) {
+func stopPluginServer(pluginLastName string, plugin devicePlugin) {
 	err := plugin.StopServer()
 	if err != nil {
 		glog.Errorf("Failed to stop plugin \"%s\": %s", pluginLastName, err)
-	}
-	if devicePluginImplementation, ok := plugin.DevicePlugin.(PluginInterfaceStop); ok {
-		err := devicePluginImplementation.Stop()
-		if err != nil {
-			glog.Errorf("Failed to stop plugin \"%s\": %s", pluginLastName, err)
-		}
 	}
 }
