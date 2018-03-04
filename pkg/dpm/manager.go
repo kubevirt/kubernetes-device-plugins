@@ -30,7 +30,7 @@ func NewDevicePluginManager(lister PluginListerInterface) *DevicePluginManager {
 func (dpm *DevicePluginManager) Run() {
 	glog.V(3).Info("Starting device plugin manager")
 
-	var pluginsMap = make(map[string]DevicePlugin)
+	var pluginsMap = make(map[string]devicePlugin)
 
 	// First important signal channel is the os signal channel. We only care about (somewhat) small subset of available signals.
 	glog.V(3).Info("Registering for system signal notifications")
@@ -77,7 +77,7 @@ HandleSignals:
 	}
 }
 
-func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]DevicePlugin, newPluginsList PluginList) {
+func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]devicePlugin, newPluginsList PluginList) {
 	var wg sync.WaitGroup
 
 	newPluginsSet := make(map[string]bool)
@@ -91,7 +91,7 @@ func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]De
 		go func() {
 			if _, ok := currentPluginsMap[newPluginName]; !ok {
 				glog.V(3).Infof("Adding a new plugin \"%s\"", newPluginName)
-				plugin := NewDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
+				plugin := newDevicePlugin(dpm.lister.GetResourceName(), newPluginName, dpm.lister.NewDevicePlugin(newPluginName))
 				startUpPlugin(newPluginName, plugin)
 				currentPluginsMap[newPluginName] = plugin
 			}
@@ -114,7 +114,7 @@ func (dpm *DevicePluginManager) handleNewPlugins(currentPluginsMap map[string]De
 	wg.Wait()
 }
 
-func (dpm *DevicePluginManager) startPluginServers(pluginsMap map[string]DevicePlugin) {
+func (dpm *DevicePluginManager) startPluginServers(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -130,7 +130,7 @@ func (dpm *DevicePluginManager) startPluginServers(pluginsMap map[string]DeviceP
 	wg.Wait()
 }
 
-func (dpm *DevicePluginManager) stopPluginServers(pluginsMap map[string]DevicePlugin) {
+func (dpm *DevicePluginManager) stopPluginServers(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -145,7 +145,7 @@ func (dpm *DevicePluginManager) stopPluginServers(pluginsMap map[string]DevicePl
 	}
 	wg.Wait()
 }
-func (dpm *DevicePluginManager) shutDownPlugins(pluginsMap map[string]DevicePlugin) {
+func (dpm *DevicePluginManager) shutDownPlugins(pluginsMap map[string]devicePlugin) {
 	var wg sync.WaitGroup
 
 	for pluginName, plugin := range pluginsMap {
@@ -158,7 +158,7 @@ func (dpm *DevicePluginManager) shutDownPlugins(pluginsMap map[string]DevicePlug
 	wg.Wait()
 }
 
-func startUpPlugin(pluginName string, plugin DevicePlugin) {
+func startUpPlugin(pluginName string, plugin devicePlugin) {
 	if devicePluginImplementation, ok := plugin.DevicePluginImplementation.(DevicePluginImplementationStartInterface); ok {
 		err := devicePluginImplementation.Start()
 		if err != nil {
@@ -171,7 +171,7 @@ func startUpPlugin(pluginName string, plugin DevicePlugin) {
 	}
 }
 
-func shutDownPlugin(pluginName string, plugin DevicePlugin) {
+func shutDownPlugin(pluginName string, plugin devicePlugin) {
 	err := plugin.StopServer()
 	if err != nil {
 		glog.Errorf("Failed to stop plugin \"%s\": %s", pluginName, err)
