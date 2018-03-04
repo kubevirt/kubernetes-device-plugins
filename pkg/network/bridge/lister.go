@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	resourceNamespace              = "bridge.network.kubevirt.io/"
+	resourceNamespace              = "bridge.network.kubevirt.io"
 	BridgesListEnvironmentVariable = "BRIDGES"
 	// maximal interface name length (15) - nic index suffix (3)
 	maxBridgeNameLength = 12
@@ -17,12 +17,12 @@ const (
 
 type BridgeLister struct{}
 
-func (bl BridgeLister) GetResourceName() string {
+func (bl BridgeLister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
-func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNamesList) {
-	var plugins = make(dpm.PluginNamesList, 0)
+func (bl BridgeLister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
+	var plugins = make(dpm.ResourceLastNamesList, 0)
 
 	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
 	bridges := strings.Split(bridgesListRaw, ",")

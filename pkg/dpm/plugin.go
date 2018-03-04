@@ -14,14 +14,25 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
+// PluginInterface is a mandatory interface that must be implemented by all plugins. It is
+// identical to DevicePluginServer interface of device plugin API. In version v1alpha this
+// interface contains methods Allocate and ListAndWatch. For more information see
+// https://godoc.org/k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha#DevicePluginServer
 type PluginInterface interface {
 	pluginapi.DevicePluginServer
 }
 
+// PluginInterfaceStart is an optional interface that could be implemented by plugin. If case Start
+// is implemented, it will be executed by Manager after plugin instantiation and before its
+// registartion to kubelet. This method could be used to prepare resources before they are offered
+// to Kubernetes.
 type PluginInterfaceStart interface {
 	Start() error
 }
 
+// PluginInterfaceStop is an optional interface that could be implemented by plugin. If case Stop
+// is implemented, it will be executed by Manager after the plugin is unregistered from kubelet.
+// This method could be used to tear down resources.
 type PluginInterfaceStop interface {
 	Stop() error
 }
@@ -39,20 +50,23 @@ type devicePlugin struct {
 func newDevicePlugin(resourceName string, deviceName string, devicePluginImplementation PluginInterface) devicePlugin {
 	return devicePlugin{
 		DevicePlugin: devicePluginImplementation,
-		Socket:       pluginapi.DevicePluginPath + deviceName,
-		ResourceName: resourceName + deviceName,
+		Socket:       pluginapi.DevicePluginPath + resourceName + "_" + deviceName,
+		ResourceName: resourceName + "/" + deviceName,
 	}
 }
 
-// StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling StartServer on started object is NOOP.
+// StartServer starts the gRPC server and registers the device plugin to Kubelet. Calling
+// StartServer on started object is NOOP.
 func (dpi *devicePlugin) StartServer() error {
 	glog.V(3).Info("Starting plugin server")
 
-	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid that, let's make plugins startup a critical section.
+	// If Kubelet socket is created, we may try to start the same plugin concurrently. To avoid
+	// that, let's make plugins startup a critical section.
 	dpi.Starting.Lock()
 	defer dpi.Starting.Unlock()
 
-	// If we've acquired the lock after waiting for the Start to finish, we don't need to do anything (as long as the plugin is running).
+	// If we've acquired the lock after waiting for the Start to finish, we don't need to do
+	// anything (as long as the plugin is running).
 	if dpi.Running {
 		return nil
 	}
@@ -106,7 +120,8 @@ func (dpi *devicePlugin) serve() error {
 	return nil
 }
 
-// register registers the device plugin (as gRPC client call) for the given resourceName with Kubelet DPI infrastructure.
+// register registers the device plugin (as gRPC client call) for the given resourceName with
+// Kubelet DPI infrastructure.
 func (dpi *devicePlugin) register(kubeletEndpoint, resourceName string) error {
 	glog.V(3).Info("Registering the DPI with Kubelet")
 
@@ -136,7 +151,8 @@ func (dpi *devicePlugin) register(kubeletEndpoint, resourceName string) error {
 	return nil
 }
 
-// StopServer stops the gRPC server. Trying to stop already stopped plugin emits an info-level log message.
+// StopServer stops the gRPC server. Trying to stop already stopped plugin emits an info-level
+// log message.
 func (dpi *devicePlugin) StopServer() error {
 	glog.V(3).Info("Stopping plugin server")
 

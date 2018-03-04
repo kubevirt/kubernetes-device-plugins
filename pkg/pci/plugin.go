@@ -11,7 +11,7 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-// DevicePlugin represents a gRPC server client/server.
+// VFIODevicePlugin represents device plugin implementation with VFIO specific attributes.
 type VFIODevicePlugin struct {
 	vendorID string
 }
