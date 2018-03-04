@@ -14,31 +14,31 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
-type DevicePluginImplementationInterface interface {
+type PluginInterface interface {
 	pluginapi.DevicePluginServer
 }
 
-type DevicePluginImplementationStartInterface interface {
+type PluginInterfaceStart interface {
 	Start() error
 }
 
-type DevicePluginImplementationStopInterface interface {
+type PluginInterfaceStop interface {
 	Stop() error
 }
 
 // DevicePlugin represents a gRPC server client/server.
 type devicePlugin struct {
-	DevicePluginImplementation DevicePluginImplementationInterface
-	ResourceName               string
-	Socket                     string
-	Server                     *grpc.Server
-	Running                    bool
-	Starting                   sync.Mutex
+	DevicePlugin PluginInterface
+	ResourceName string
+	Socket       string
+	Server       *grpc.Server
+	Running      bool
+	Starting     sync.Mutex
 }
 
-func newDevicePlugin(resourceName string, deviceName string, devicePluginImplementation DevicePluginImplementationInterface) devicePlugin {
+func newDevicePlugin(resourceName string, deviceName string, devicePluginImplementation PluginInterface) devicePlugin {
 	return devicePlugin{
-		DevicePluginImplementation: devicePluginImplementation,
+		DevicePlugin: devicePluginImplementation,
 		Socket:       pluginapi.DevicePluginPath + deviceName,
 		ResourceName: resourceName + deviceName,
 	}
@@ -90,7 +90,7 @@ func (dpi *devicePlugin) serve() error {
 	}
 
 	dpi.Server = grpc.NewServer([]grpc.ServerOption{}...)
-	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.DevicePluginImplementation)
+	pluginapi.RegisterDevicePluginServer(dpi.Server, dpi.DevicePlugin)
 
 	go dpi.Server.Serve(sock)
 	glog.V(3).Info("Serving requests...")

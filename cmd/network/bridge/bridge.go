@@ -17,6 +17,6 @@ func main() {
 		glog.Exit("BRIDGES environment variable must be set in format BRIDGE[,BRIDGE[...]]")
 	}
 
-	manager := dpm.NewDevicePluginManager(bridge.BridgeLister{})
+	manager := dpm.NewManager(bridge.BridgeLister{})
 	manager.Run()
 }

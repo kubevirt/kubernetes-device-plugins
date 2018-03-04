@@ -21,8 +21,8 @@ func (bl BridgeLister) GetResourceName() string {
 	return resourceNamespace
 }
 
-func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
-	var plugins = make(dpm.PluginList, 0)
+func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNamesList) {
+	var plugins = make(dpm.PluginNamesList, 0)
 
 	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
 	bridges := strings.Split(bridgesListRaw, ",")
@@ -37,7 +37,7 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginList) {
 	pluginListCh <- plugins
 }
 
-func (bl BridgeLister) NewDevicePlugin(bridge string) dpm.DevicePluginImplementationInterface {
+func (bl BridgeLister) NewPlugin(bridge string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", bridge)
 	return &NetworkBridgeDevicePlugin{
 		bridge:       bridge,

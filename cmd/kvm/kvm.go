@@ -10,6 +10,6 @@ import (
 func main() {
 	flag.Parse()
 
-	manager := dpm.NewDevicePluginManager(kvm.KVMLister{})
+	manager := dpm.NewManager(kvm.KVMLister{})
 	manager.Run()
 }
