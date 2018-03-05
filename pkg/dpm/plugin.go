@@ -48,9 +48,9 @@ type devicePlugin struct {
 	Starting         sync.Mutex
 }
 
-func newDevicePlugin(resourceNamespace string, resourceLastName string, devicePluginImplementation PluginInterface) devicePlugin {
+func newDevicePlugin(resourceNamespace string, resourceLastName string, devicePluginImpl PluginInterface) devicePlugin {
 	return devicePlugin{
-		DevicePlugin:     devicePluginImplementation,
+		DevicePlugin:     devicePluginImpl,
 		Socket:           pluginapi.DevicePluginPath + resourceNamespace + "_" + resourceLastName,
 		ResourceName:     resourceNamespace + "/" + resourceLastName,
 		ResourceLastName: resourceLastName,

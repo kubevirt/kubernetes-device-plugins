@@ -21,8 +21,8 @@ func (bl BridgeLister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
-func (bl BridgeLister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
-	var plugins = make(dpm.ResourceLastNamesList, 0)
+func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
+	var plugins = make(dpm.PluginNameList, 0)
 
 	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
 	bridges := strings.Split(bridgesListRaw, ",")

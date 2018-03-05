@@ -34,8 +34,8 @@ func (kvm KVMLister) GetResourceNamespace() string {
 }
 
 // Discovery discovers all KVM devices within the system.
-func (kvm KVMLister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
-	var plugins = make(dpm.ResourceLastNamesList, 0)
+func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNameList) {
+	var plugins = make(dpm.PluginNameList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
 		glog.V(3).Infof("Discovered %s", KVMPath)

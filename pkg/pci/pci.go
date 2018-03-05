@@ -25,7 +25,7 @@ func (pci PCILister) GetResourceNamespace() string {
 }
 
 // Discover discovers all PCI devices within the system.
-func (pci PCILister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
+func (pci PCILister) Discover(pluginListCh chan dpm.PluginNameList) {
 	var devicesSet = make(map[string]struct{})
 	filepath.Walk("/sys/bus/pci/devices", func(path string, info os.FileInfo, err error) error {
 		glog.V(3).Infof("Discovering device in %s", path)
@@ -45,7 +45,7 @@ func (pci PCILister) Discover(pluginListCh chan dpm.ResourceLastNamesList) {
 		return nil
 	})
 
-	var plugins = make(dpm.ResourceLastNamesList, 0)
+	var plugins = make(dpm.PluginNameList, 0)
 	for deviceClass, _ := range devicesSet {
 		plugins = append(plugins, deviceClass)
 	}
