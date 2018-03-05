@@ -13,6 +13,7 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 )
 
+// TODO: Make plugin server start retries configurable.
 const (
 	startPluginServerRetries   = 3
 	startPluginServerRetryWait = 3 * time.Second
@@ -178,18 +179,21 @@ func (dpm *Manager) stopPlugins(pluginMap map[string]devicePlugin) {
 }
 
 func startPlugin(pluginLastName string, plugin devicePlugin) {
-	if devicePluginImpl, ok := plugin.DevicePlugin.(PluginInterfaceStart); ok {
-		err := devicePluginImpl.Start()
+	var err error
+	if devicePluginImpl, ok := plugin.DevicePluginImpl.(PluginInterfaceStart); ok {
+		err = devicePluginImpl.Start()
 		if err != nil {
 			glog.Errorf("Failed to start plugin \"%s\": %s", pluginLastName, err)
 		}
 	}
-	startPluginServer(pluginLastName, plugin)
+	if err == nil {
+		startPluginServer(pluginLastName, plugin)
+	}
 }
 
 func stopPlugin(pluginLastName string, plugin devicePlugin) {
 	stopPluginServer(pluginLastName, plugin)
-	if devicePluginImpl, ok := plugin.DevicePlugin.(PluginInterfaceStop); ok {
+	if devicePluginImpl, ok := plugin.DevicePluginImpl.(PluginInterfaceStop); ok {
 		err := devicePluginImpl.Stop()
 		if err != nil {
 			glog.Errorf("Failed to stop plugin \"%s\": %s", pluginLastName, err)
@@ -203,9 +207,11 @@ func startPluginServer(pluginLastName string, plugin devicePlugin) {
 		if err == nil {
 			return
 		} else if i == startPluginServerRetries {
-			glog.V(3).Infof("Failed to start plugin server \"%s\", within given tries: %s", pluginLastName, err)
+			glog.V(3).Infof("Failed to start plugin's \"%s\" server, within given %d tries: %s",
+				pluginLastName, startPluginServerRetries, err)
 		} else {
-			glog.Errorf("Failed to start plugin server \"%s\", waiting %d before next try: %s", pluginLastName, startPluginServerRetryWait, err)
+			glog.Errorf("Failed to start plugin's \"%s\" server, atempt %d ouf of %d waiting %d before next try: %s",
+				pluginLastName, i, startPluginServerRetries, startPluginServerRetryWait, err)
 			time.Sleep(startPluginServerRetryWait)
 		}
 	}
@@ -214,6 +220,6 @@ func startPluginServer(pluginLastName string, plugin devicePlugin) {
 func stopPluginServer(pluginLastName string, plugin devicePlugin) {
 	err := plugin.StopServer()
 	if err != nil {
-		glog.Errorf("Failed to stop plugin \"%s\": %s", pluginLastName, err)
+		glog.Errorf("Failed to stop plugin's \"%s\" server: %s", pluginLastName, err)
 	}
 }
