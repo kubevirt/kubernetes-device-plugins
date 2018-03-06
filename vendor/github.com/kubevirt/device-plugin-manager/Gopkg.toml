@@ -1,0 +1,15 @@
+[[constraint]]
+  branch = "master"
+  name = "github.com/golang/glog"
+
+[[constraint]]
+  branch = "master"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "1.9.2"
+
+[[constraint]]
+  name = "k8s.io/kubernetes"
+  version = "1.9.2"

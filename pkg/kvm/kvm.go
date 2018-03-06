@@ -5,10 +5,9 @@ import (
 	"strconv"
 
 	"github.com/golang/glog"
+	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
-
-	"kubevirt.io/kubernetes-device-plugins/pkg/dpm"
 )
 
 const (

@@ -28,7 +28,7 @@ Each plugin may have it's own build instructions in the linked README.md.
 ## Creating Device Plugin
 
 See Device Plugin Manager documentaion on
-https://godoc.org/github.com/kubevirt/kubernetes-device-plugins/pkg/dpm
+https://godoc.org/github.com/kubevirt/device-plugin-manager/pkg/dpm
 
 ## Develop
 
@@ -55,5 +55,4 @@ Test specific modules:
 
 ```
 make test-cmd-vfio
-make test-pkg-dpm
 ```
