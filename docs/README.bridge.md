@@ -61,7 +61,7 @@ spec:
 ```
 
 ```bash
-$ kubectl apply -f https://raw.githubusercontent.com/kubevirt/kubernetes-device-plugins/master/docs/network-bridge/example-pod.yml
+$ kubectl apply -f https://raw.githubusercontent.com/kubevirt/kubernetes-device-plugins/master/examples/bridge-consumer.yml
 pod "bridge-consumer" created
 ```
 
