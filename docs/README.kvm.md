@@ -44,7 +44,7 @@ docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugin
 kubectl apply -f manifests/kvm-ds.yml
 
 # Optionally you can now test it using an example consumer
-kubectl apply -f docs/kvm/consumer.yml
+kubectl apply -f examples/kvm-consumer.yml
 kubectl exec -it kvm-consumer -- ls /dev/kvm
 ```
 
