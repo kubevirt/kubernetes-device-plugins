@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kvm-consumer
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["/bin/sleep", "123"]
+    resources:
+      limits:
+        devices.kubevirt.io/kvm: 1
