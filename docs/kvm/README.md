@@ -33,13 +33,20 @@ sudo ./kvm -v 3 -logtostderr
 
 ### Docker
 ```
-docker run -it -v /dev:/dev -v /sys:/sys -v /lib/modules:/lib/modules -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins --privileged --cap-add=ALL kvm:latest /bin/bash
+docker run -it -v /var/lib/kubelet/device-plugins:/var/lib/kubelet/device-plugins --privileged --cap-add=ALL kvm:latest /bin/bash
 (in docker image) ./kvm -v 3 -logtostderr
 ```
 
 ## As a DaemonSet
 
-NOTE: This process is not finalized yet.
+```
+# Deploy the device plugin
+kubectl apply -f manifests/kvm-ds.yml
+
+# Optionally you can now test it using an example consumer
+kubectl apply -f docs/kvm/consumer.yml
+kubectl exec -it kvm-consumer -- ls /dev/kvm
+```
 
 ## API
 
@@ -48,7 +55,7 @@ Node description:
 ```yaml
 Capacity:
  ...
- devices.kubevirt.io/kvm:  3
+ devices.kubevirt.io/kvm: "3"
  ...
 ```
 
@@ -61,9 +68,9 @@ spec:
     ...
     resources:
       requests:
-              devices.kubevirt.io/kvm: 1
+              devices.kubevirt.io/kvm: "1"
       limits:
-              devices.kubevirt.io/kvm: 1
+              devices.kubevirt.io/kvm: "1"
 ```
 
 ## Issues

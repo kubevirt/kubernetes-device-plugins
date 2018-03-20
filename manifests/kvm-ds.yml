@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    name: device-plugin-kvm
+  name: device-plugin-kvm
+spec:
+  selector:
+    matchLabels:
+      name: device-plugin-kvm
+  template:
+    metadata:
+      labels:
+        name: device-plugin-kvm
+    spec:
+      containers:
+      - name: device-plugin-kvm
+        image: quay.io/kubevirt/device-plugin-kvm
+        args: ["-v3", "-logtostderr"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+          - name: device-plugin
+            mountPath: /var/lib/kubelet/device-plugins
+      volumes:
+        - name: device-plugin
+          hostPath:
+            path: /var/lib/kubelet/device-plugins
