@@ -21,7 +21,7 @@
 // working implementation of a plugin, but rather shows structure of it.
 //
 //  import (
-//      "kubevirt.io/kubernetes-device-plugins/pkg/dpm"
+//      "github.com/kubevirt/device-plugin-manager/pkg/dpm"
 //      pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
 //  )
 //
