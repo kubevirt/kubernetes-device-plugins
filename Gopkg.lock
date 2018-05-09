@@ -91,10 +91,10 @@
   version = "v1.0.0"
 
 [[projects]]
-  branch = "master"
   name = "github.com/kubevirt/device-plugin-manager"
   packages = ["pkg/dpm"]
-  revision = "30dfda8d4a791a737d5d4d509945f61cedd67b6d"
+  revision = "db7069f678197bd39e81066c451e8a7cd2f54d94"
+  version = "v1.9.2"
 
 [[projects]]
   name = "github.com/pkg/errors"
@@ -208,6 +208,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "cc00f1da48411f898c1d3ca8d99571be2e420f8f578e08a1917a01a9f93287e8"
+  inputs-digest = "0fa51027e95047263f4bea37c3aba4b88d0aef560b0ff9a2827f506392d2f203"
   solver-name = "gps-cdcl"
   solver-version = 1
