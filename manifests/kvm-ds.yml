@@ -16,7 +16,7 @@ spec:
       containers:
       - name: device-plugin-kvm
         image: quay.io/kubevirt/device-plugin-kvm
-        args: ["-v3", "-logtostderr"]
+        args: ["-v", "3", "-logtostderr"]
         securityContext:
           privileged: true
         volumeMounts:
