@@ -8,7 +8,7 @@ import (
 
 	"github.com/golang/glog"
 	"golang.org/x/net/context"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 // VFIODevicePlugin represents device plugin implementation with VFIO specific attributes.
@@ -72,34 +72,39 @@ func (dpi *VFIODevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allocate
 	iommuMutex.Lock()
 	defer iommuMutex.Unlock()
 
-	for _, id := range r.DevicesIDs {
-		iommuGroup, err := getIOMMUGroup(id)
-		if err != nil {
-			return &response, err
+	for _, req := range r.ContainerRequests {
+		var devices []*pluginapi.DeviceSpec
+		for _, id := range req.DevicesIDs {
+			iommuGroup, err := getIOMMUGroup(id)
+			if err != nil {
+				return &response, err
+			}
+
+			vfioPath := constructVFIOPath(iommuGroup)
+
+			err = overrideIOMMUGroup(iommuGroup, "vfio-pci")
+			if err != nil {
+				return &response, err
+			}
+
+			err = unbindIOMMUGroup(iommuGroup)
+			if err != nil {
+				return &response, err
+			}
+
+			err = probeIOMMUGroup(iommuGroup)
+			if err != nil {
+				return &response, err
+			}
+
+			dev := new(pluginapi.DeviceSpec)
+			dev.HostPath = vfioPath
+			dev.ContainerPath = vfioPath
+			dev.Permissions = "rw"
+			devices = append(devices, dev)
 		}
-
-		vfioPath := constructVFIOPath(iommuGroup)
-
-		err = overrideIOMMUGroup(iommuGroup, "vfio-pci")
-		if err != nil {
-			return &response, err
-		}
-
-		err = unbindIOMMUGroup(iommuGroup)
-		if err != nil {
-			return &response, err
-		}
-
-		err = probeIOMMUGroup(iommuGroup)
-		if err != nil {
-			return &response, err
-		}
-
-		dev := new(pluginapi.DeviceSpec)
-		dev.HostPath = vfioPath
-		dev.ContainerPath = vfioPath
-		dev.Permissions = "rw"
-		response.Devices = append(response.Devices, dev)
+		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+			Devices: devices})
 	}
 
 	// As somewhat special case, we also have to make sure that the pod has /dev/vfio/vfio path.
@@ -108,7 +113,23 @@ func (dpi *VFIODevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allocate
 	dev.HostPath = "/dev/vfio/vfio"
 	dev.ContainerPath = "/dev/vfio/vfio"
 	dev.Permissions = "rw"
-	response.Devices = append(response.Devices, dev)
+	var devices []*pluginapi.DeviceSpec
+	devices = append(devices, dev)
+	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+		Devices: devices})
 
 	return &response, nil
+}
+
+// GetDevicePluginOptions returns options to be communicated with Device
+// Manager
+func (VFIODevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+	return nil, nil
+}
+
+// PreStartContainer is called, if indicated by Device Plugin during registeration phase,
+// before each container start. Device plugin can run device specific operations
+// such as reseting the device before making devices available to the container
+func (VFIODevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	return nil, nil
 }

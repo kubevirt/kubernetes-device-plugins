@@ -94,6 +94,7 @@
     "connectivity",
     "credentials",
     "encoding",
+    "encoding/proto",
     "grpclb/grpc_lb_v1/messages",
     "grpclog",
     "internal",
@@ -109,18 +110,18 @@
     "tap",
     "transport"
   ]
-  revision = "6b51017f791ae1cfbec89c52efdf444b13b550ef"
-  version = "v1.9.2"
+  revision = "d11072e7ca9811b1100b80ca0269ac831f06d024"
+  version = "v1.11.3"
 
 [[projects]]
   name = "k8s.io/kubernetes"
-  packages = ["pkg/kubelet/apis/deviceplugin/v1alpha"]
-  revision = "5fa2db2bd46ac79e5e00a4e6ed24191080aa463b"
-  version = "v1.9.2"
+  packages = ["pkg/kubelet/apis/deviceplugin/v1beta1"]
+  revision = "81753b10df112992bf51bbc2c2f85208aad78335"
+  version = "v1.10.2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "7788e1afaf407ba8c9a646ef8e8470f031f87d6385574da077d4be35d731b84c"
+  inputs-digest = "ece7fb08814fffd650f620b5bb13e0257cbd4f93427e35daa56a242689b8d421"
   solver-name = "gps-cdcl"
   solver-version = 1

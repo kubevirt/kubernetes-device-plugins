@@ -11,7 +11,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/vishvananda/netlink"
 	"golang.org/x/net/context"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dockerutils"
 )
 
@@ -111,21 +111,40 @@ func bridgeExists(bridge string) bool {
 func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
 	var response pluginapi.AllocateResponse
 
-	for _, nic := range r.DevicesIDs {
-		dev := new(pluginapi.DeviceSpec)
-		assignmentPath := getAssignmentPath(nbdp.bridge, nic)
-		dev.HostPath = fakeDevicePath
-		dev.ContainerPath = assignmentPath
-		dev.Permissions = "r"
-		response.Devices = append(response.Devices, dev)
-		nbdp.assignmentCh <- &Assignment{
-			nic,
-			assignmentPath,
-			time.Now(),
+	for _, req := range r.ContainerRequests {
+		var devices []*pluginapi.DeviceSpec
+		for _, nic := range req.DevicesIDs {
+			dev := new(pluginapi.DeviceSpec)
+			assignmentPath := getAssignmentPath(nbdp.bridge, nic)
+			dev.HostPath = fakeDevicePath
+			dev.ContainerPath = assignmentPath
+			dev.Permissions = "r"
+			devices = append(devices, dev)
+
+			nbdp.assignmentCh <- &Assignment{
+				nic,
+				assignmentPath,
+				time.Now(),
+			}
 		}
+		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+			Devices: devices})
 	}
 
 	return &response, nil
+}
+
+// GetDevicePluginOptions returns options to be communicated with Device
+// Manager
+func (NetworkBridgeDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+	return nil, nil
+}
+
+// PreStartContainer is called, if indicated by Device Plugin during registeration phase,
+// before each container start. Device plugin can run device specific operations
+// such as reseting the device before making devices available to the container
+func (NetworkBridgeDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	return nil, nil
 }
 
 func getAssignmentPath(bridge string, nic string) string {

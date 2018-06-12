@@ -1,13 +1,4 @@
 language: go
 
 go: 1.9.x
-go_import_path: kubevirt.io/kubernetes-device-plugins
-
-script: make build test docker-build
-
-deploy:
-  - provider: script
-    skip_cleanup: true
-    script: docker login -u="${DOCKER_USER}" -p="${DOCKER_PASS}" quay.io && make docker-push
-    on:
-      branch: master
+go_import_path: github.com/kubevirt/device-plugin-manager

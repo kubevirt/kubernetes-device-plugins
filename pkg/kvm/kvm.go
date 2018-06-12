@@ -7,7 +7,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"golang.org/x/net/context"
-	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1alpha"
+	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
 
 const (
@@ -28,12 +28,12 @@ type KVMDevicePlugin struct {
 	update  chan message
 }
 
-func (kvm KVMLister) GetResourceNamespace() string {
+func (KVMLister) GetResourceNamespace() string {
 	return resourceNamespace
 }
 
 // Discovery discovers all KVM devices within the system.
-func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNameList) {
+func (KVMLister) Discover(pluginListCh chan dpm.PluginNameList) {
 	var plugins = make(dpm.PluginNameList, 0)
 
 	if _, err := os.Stat(KVMPath); err == nil {
@@ -45,7 +45,7 @@ func (kvm KVMLister) Discover(pluginListCh chan dpm.PluginNameList) {
 }
 
 // NewPlugin initializes new device plugin with KVM specific attributes.
-func (kvm KVMLister) NewPlugin(deviceID string) dpm.PluginInterface {
+func (KVMLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	return &KVMDevicePlugin{
 		counter: 0,
@@ -88,7 +88,23 @@ func (dpi *KVMDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateR
 	dev.HostPath = "/dev/kvm"
 	dev.ContainerPath = "/dev/kvm"
 	dev.Permissions = "rw"
-	response.Devices = append(response.Devices, dev)
+	var devices []*pluginapi.DeviceSpec
+	devices = append(devices, dev)
+	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+		Devices: devices })
 
 	return &response, nil
+}
+
+// GetDevicePluginOptions returns options to be communicated with Device
+// Manager
+func (KVMDevicePlugin) GetDevicePluginOptions(context.Context, *pluginapi.Empty) (*pluginapi.DevicePluginOptions, error) {
+	return nil, nil
+}
+
+// PreStartContainer is called, if indicated by Device Plugin during registeration phase,
+// before each container start. Device plugin can run device specific operations
+// such as reseting the device before making devices available to the container
+func (KVMDevicePlugin) PreStartContainer(context.Context, *pluginapi.PreStartContainerRequest) (*pluginapi.PreStartContainerResponse, error) {
+	return nil, nil
 }
