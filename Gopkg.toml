@@ -29,8 +29,11 @@
   branch = "master"
   name = "golang.org/x/net"
 
-
 [[constraint]]
   branch = "master"
   name = "github.com/kubevirt/device-plugin-manager"
+
+[[constraint]]
+  version = "1.10"
+  name = "k8s.io/kubernetes"
 
