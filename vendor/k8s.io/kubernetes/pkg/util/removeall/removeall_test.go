@@ -79,6 +79,22 @@ func (mounter *fakeMounter) ExistsPath(pathname string) bool {
 	return true
 }
 
+func (mounter *fakeMounter) PrepareSafeSubpath(subPath mount.Subpath) (newHostPath string, cleanupAction func(), err error) {
+	return "", nil, nil
+}
+
+func (mounter *fakeMounter) CleanSubPaths(_, _ string) error {
+	return nil
+}
+
+func (mounter *fakeMounter) SafeMakeDir(_, _ string, _ os.FileMode) error {
+	return nil
+}
+
+func (mounter *fakeMounter) GetSELinuxSupport(pathname string) (bool, error) {
+	return false, errors.New("not implemented")
+}
+
 func (mounter *fakeMounter) IsLikelyNotMountPoint(file string) (bool, error) {
 	name := path.Base(file)
 	if strings.HasPrefix(name, "mount") {
