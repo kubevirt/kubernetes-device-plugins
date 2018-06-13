@@ -33,19 +33,17 @@ func (pci PCILister) Discover(pluginListCh chan dpm.PluginNameList) {
 			return nil
 		}
 
-		vendorID, _, err := getDeviceVendor(info.Name())
+		_, _, err = getDeviceVendor(info.Name())
 		if err != nil {
 			glog.V(3).Infof("Could not process device %s", info.Name())
 			return filepath.SkipDir
 		}
 
-		devicesSet[vendorID] = devicesSet[vendorID]
-
 		return nil
 	})
 
 	var plugins = make(dpm.PluginNameList, 0)
-	for deviceClass, _ := range devicesSet {
+	for deviceClass := range devicesSet {
 		plugins = append(plugins, deviceClass)
 	}
 
@@ -107,7 +105,7 @@ func probeIOMMUGroup(iommuGroup int) error {
 		err = safeWrite(filepath.Join("/sys/bus/pci/drivers_probe"), []byte(deviceAddress), 0400)
 		glog.V(3).Infof("Probing device %s", deviceAddress)
 		if err != nil {
-			glog.Errorf("Could not probe device %d", deviceAddress)
+			glog.Errorf("Could not probe device %s", deviceAddress)
 			return err
 		}
 

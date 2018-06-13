@@ -127,7 +127,7 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 				time.Now(),
 			}
 		}
-		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse{
 			Devices: devices})
 	}
 

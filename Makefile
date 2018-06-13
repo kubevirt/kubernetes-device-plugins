@@ -15,7 +15,7 @@ DOCKERFILES = $(sort \
 build: $(patsubst %, build-%, $(PLUGINS))
 
 build-%:
-	cd cmd/$(subst -,/,$*) && go install -v
+	cd cmd/$(subst -,/,$*) && go fmt && go vet && go install -v
 
 test:
 	go test ./cmd/... ./pkg/...
@@ -32,7 +32,6 @@ docker-build-%:
 docker-push: $(patsubst %, docker-push-%, $(DOCKERFILES))
 
 docker-push-%:
-	docker tag ${REGISTRY}/device-plugin-$*:latest ${REGISTRY}/device-plugin-$*
 	docker push ${REGISTRY}/device-plugin-$*:latest
 
 dep:
