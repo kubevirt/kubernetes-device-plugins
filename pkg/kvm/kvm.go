@@ -90,8 +90,8 @@ func (dpi *KVMDevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateR
 	dev.Permissions = "rw"
 	var devices []*pluginapi.DeviceSpec
 	devices = append(devices, dev)
-	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
-		Devices: devices })
+	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse{
+		Devices: devices})
 
 	return &response, nil
 }

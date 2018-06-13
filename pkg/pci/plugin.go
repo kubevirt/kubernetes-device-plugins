@@ -103,7 +103,7 @@ func (dpi *VFIODevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allocate
 			dev.Permissions = "rw"
 			devices = append(devices, dev)
 		}
-		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse{
 			Devices: devices})
 	}
 
@@ -115,7 +115,7 @@ func (dpi *VFIODevicePlugin) Allocate(ctx context.Context, r *pluginapi.Allocate
 	dev.Permissions = "rw"
 	var devices []*pluginapi.DeviceSpec
 	devices = append(devices, dev)
-	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse {
+	response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse{
 		Devices: devices})
 
 	return &response, nil
