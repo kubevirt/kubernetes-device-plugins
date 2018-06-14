@@ -2,6 +2,7 @@ package random
 
 import (
 	"os"
+	"strconv"
 
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
@@ -27,6 +28,7 @@ type message struct{}
 // Note that /dev/random and /dev/urandom are automatically exposed
 type DevicePlugin struct {
 	randomType string
+	counter    int
 	devs       []*pluginapi.Device
 	update     chan message
 }
@@ -40,11 +42,13 @@ func (Lister) GetResourceNamespace() string {
 func (Lister) Discover(pluginListCh chan dpm.PluginNameList) {
 	var plugins = make(dpm.PluginNameList, 0)
 
-	if _, err := os.Stat(typeToPath(hwRandomName)); err == nil {
-		// TODO: do we need to try and read 1 byte from device to make sure it is up?
-		// os.Open(typeToPath(hwRandomName)).Read(make([]byte, 1))
-		glog.V(3).Infof("Discovered %s", typeToPath(hwRandomName))
-		plugins = append(plugins, hwRandomName)
+	f, err := os.Open(typeToPath(hwRandomName))
+	if err == nil {
+		if _, err = f.Read(make([]byte, 1)); err == nil {
+			// making sure that the device exists and is readable
+			glog.V(3).Infof("Discovered %s", typeToPath(hwRandomName))
+			plugins = append(plugins, hwRandomName)
+		}
 	}
 	pluginListCh <- plugins
 }
@@ -54,6 +58,7 @@ func (Lister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 	return &DevicePlugin{
 		randomType: deviceID,
+		counter:    0,
 		devs:       make([]*pluginapi.Device, 0),
 		update:     make(chan message),
 	}
@@ -63,7 +68,7 @@ func (Lister) NewPlugin(deviceID string) dpm.PluginInterface {
 func (dpi *DevicePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
 	// Initialize with available device
 	dpi.devs = append(dpi.devs, &pluginapi.Device{
-		ID:     hwRandomName,
+		ID:     hwRandomName ,
 		Health: pluginapi.Healthy,
 	})
 
@@ -83,9 +88,13 @@ func (dpi *DevicePlugin) Allocate(ctx context.Context, r *pluginapi.AllocateRequ
 	var response pluginapi.AllocateResponse
 
 	dpi.devs = append(dpi.devs, &pluginapi.Device{
-		ID:     dpi.randomType,
+		ID:     dpi.randomType + strconv.Itoa(dpi.counter),
 		Health: pluginapi.Healthy,
 	})
+	// since the hwrng device is unlimited, we allocate a new one 
+	// with a new ID every time "Allocate" is called
+	dpi.counter++
+	
 	dpi.update <- message{}
 
 	dev := new(pluginapi.DeviceSpec)
