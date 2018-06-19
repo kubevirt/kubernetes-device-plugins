@@ -6,7 +6,7 @@ spec:
   containers:
   - name: busybox
     image: busybox
-    command: ["/bin/sleep", "123"]
+    command: ["/bin/head", "-c", "16", "/dev/hwrng"]
     resources:
       limits:
         devices.kubevirt.io/hwrng: 1
