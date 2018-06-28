@@ -4,9 +4,11 @@ metadata:
   name: bridge-consumer
 spec:
   containers:
-  - name: busybox
-    image: busybox
-    command: ["/bin/sleep", "123"]
+  - name: tcpdump
+    image: corfr/tcpdump
+    securityContext:
+      privileged: true
+    command: ["/bin/sleep", "1234"]
     resources:
       limits:
         bridge.network.kubevirt.io/mybr0: 1

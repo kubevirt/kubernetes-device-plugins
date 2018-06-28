@@ -17,7 +17,7 @@ spec:
       hostPID: true
       containers:
       - name: device-plugin-network-bridge
-        image: quay.io/kubevirt/device-plugin-network-bridge:latest
+        image: yuvalif/device-plugin-network-bridge:latest
         securityContext:
           privileged: true
         env:

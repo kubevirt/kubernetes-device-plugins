@@ -10,6 +10,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"kubevirt.io/kubernetes-device-plugins/pkg/dockerutils"
@@ -205,29 +206,93 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	linkName := randInterfaceName()
 
+	// fetch the bridge, this is expected to succeed since attachPodToBridge is invoked only if bridge exists
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
 
-	link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: linkName, MasterIndex: bridge.Attrs().Index}, PeerName: nicName}
+	// create the virtual interface that should be connected to the bridge
+	// TODO: allow setting MAC address for that interface
+	link := &netlink.Veth{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: linkName,
+			MasterIndex: bridge.Attrs().Index,
+			MTU: bridge.Attrs().MTU, 
+			NetNsID: bridge.Attrs().NetNsID},
+		PeerName: nicName}
 
 	err = netlink.LinkAdd(link)
 	if err != nil {
 		return err
 	}
 
+	// set interface up
+	err = netlink.LinkSetUp(link)
+	if err!= nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// get the peer interface
 	peer, err := netlink.LinkByName(nicName)
 	if err != nil {
 		netlink.LinkDel(link)
 		return err
 	}
 
+	// add peer to pod namespace
 	err = netlink.LinkSetNsPid(peer, containerPid)
 	if err != nil {
 		netlink.LinkDel(link)
 		return err
 	}
+
+	// store current namespace
+	originalNS, err := netns.Get()
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// get namespace of the pod
+	ns, err := netns.GetFromPid(containerPid)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set to pod namespace so that interface values could be set
+	err = netns.Set(ns)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// get the peer back, now from the new namespace
+	peer, err = netlink.LinkByName(nicName)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set MTU on the peer
+	err = netlink.LinkSetMTU(peer, link.MTU)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+	
+	// set peer interface up
+	err = netlink.LinkSetUp(peer)
+	if err!= nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set back to the original namespace
+	netns.Set(originalNS)
+	// TODO: do we need that? Is error handling needed here?
 
 	return nil
 }
