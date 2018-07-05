@@ -12,10 +12,16 @@ DOCKERFILES = $(sort \
 			  $(dir \
 			  $(shell find cmd/ -type f -name 'Dockerfile')))))
 
-build: $(patsubst %, build-%, $(PLUGINS))
+all: build
+
+build: format $(patsubst %, build-%, $(PLUGINS))
 
 build-%:
 	cd cmd/$(subst -,/,$*) && go fmt && go vet && go install -v
+
+format:
+	go fmt ./pkg/...
+	go vet ./pkg/...
 
 test:
 	go test ./cmd/... ./pkg/...
@@ -41,5 +47,5 @@ clean-dep:
 	rm -f ./Gopkg.lock
 	rm -rf ./vendor
 
-.PHONY: build test docker-build docker-push docker-local-push dep clean-dep
+.PHONY: format build test docker-build docker-push docker-local-push dep clean-dep
 

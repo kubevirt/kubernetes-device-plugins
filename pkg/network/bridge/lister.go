@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
+	"kubevirt.io/device-plugin-manager/pkg/dpm"
 )
 
 const (

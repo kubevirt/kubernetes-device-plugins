@@ -216,10 +216,10 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	// TODO: allow setting MAC address for that interface
 	link := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
-			Name: linkName,
+			Name:        linkName,
 			MasterIndex: bridge.Attrs().Index,
-			MTU: bridge.Attrs().MTU, 
-			NetNsID: bridge.Attrs().NetNsID},
+			MTU:         bridge.Attrs().MTU,
+			NetNsID:     bridge.Attrs().NetNsID},
 		PeerName: nicName}
 
 	err = netlink.LinkAdd(link)
@@ -229,7 +229,7 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 
 	// set interface up
 	err = netlink.LinkSetUp(link)
-	if err!= nil {
+	if err != nil {
 		netlink.LinkDel(link)
 		return err
 	}
@@ -282,10 +282,10 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 		netlink.LinkDel(link)
 		return err
 	}
-	
+
 	// set peer interface up
 	err = netlink.LinkSetUp(peer)
-	if err!= nil {
+	if err != nil {
 		netlink.LinkDel(link)
 		return err
 	}
