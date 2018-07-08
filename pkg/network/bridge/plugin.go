@@ -175,28 +175,28 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 			glog.V(3).Infof("Handling pending assignment for: %s", assignment.DeviceID)
 
 			if time.Now().After(assignment.Created.Add(assignmentTimeout)) {
-				glog.V(3).Info("Assignment timed out")
+				glog.V(3).Infof("Assignment for %s timed out", assignment.DeviceID)
 				pendingAssignments.Remove(a)
 				continue
 			}
 
 			containerID, err := cli.GetContainerIDByMountedDevice(assignment.ContainerPath)
 			if err != nil {
-				glog.V(3).Info("Container was not found")
+				glog.V(3).Infof("Container was not found, due to: %s", err.Error())
 				continue
 			}
 
 			containerPid, err := cli.GetPidByContainerID(containerID)
 			if err != nil {
-				glog.V(3).Info("Failed to obtain container's pid")
+				glog.V(3).Info("Failed to obtain container's pid, due to: %s", err.Error())
 				continue
 			}
 
 			err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
 			if err == nil {
-				glog.V(3).Info("Successfully attached pod to a bridge")
+				glog.V(3).Infof("Successfully attached pod to a bridge: %s", nbdp.bridge)
 			} else {
-				glog.V(3).Infof("Pod attachment failed with: %s", err)
+				glog.V(3).Infof("Pod attachment failed with: %s", err.Error())
 			}
 			pendingAssignments.Remove(a)
 		}
@@ -213,7 +213,6 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	}
 
 	// create the virtual interface that should be connected to the bridge
-	// TODO: allow setting MAC address for that interface
 	link := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{
 			Name:        linkName,
@@ -269,6 +268,16 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 		return err
 	}
 
+	// set back to the original namespace before we leave this function
+	defer func() {
+		setErr := netns.Set(originalNS)
+		if setErr != nil {
+			// if we cannot go back the the original namespace
+			// the plugin cannot be used anymore and a restart is needed
+			panic(setErr)
+		}
+	}()
+
 	// get the peer back, now from the new namespace
 	peer, err = netlink.LinkByName(nicName)
 	if err != nil {
@@ -289,10 +298,6 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 		netlink.LinkDel(link)
 		return err
 	}
-
-	// set back to the original namespace
-	netns.Set(originalNS)
-	// TODO: do we need that? Is error handling needed here?
 
 	return nil
 }
