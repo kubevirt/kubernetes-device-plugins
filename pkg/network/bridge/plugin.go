@@ -9,11 +9,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/kubevirt/kubernetes-device-plugins/pkg/dockerutils"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
-	"kubevirt.io/kubernetes-device-plugins/pkg/dockerutils"
 )
 
 const (

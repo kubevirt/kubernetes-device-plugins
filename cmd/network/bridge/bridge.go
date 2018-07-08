@@ -6,7 +6,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
-	"kubevirt.io/kubernetes-device-plugins/pkg/network/bridge"
+	"github.com/kubevirt/kubernetes-device-plugins/pkg/network/bridge"
 )
 
 func main() {
