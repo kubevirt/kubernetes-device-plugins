@@ -9,10 +9,11 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	"github.com/kubevirt/kubernetes-device-plugins/pkg/dockerutils"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
-	"kubevirt.io/kubernetes-device-plugins/pkg/dockerutils"
 )
 
 const (
@@ -174,28 +175,28 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 			glog.V(3).Infof("Handling pending assignment for: %s", assignment.DeviceID)
 
 			if time.Now().After(assignment.Created.Add(assignmentTimeout)) {
-				glog.V(3).Info("Assignment timed out")
+				glog.V(3).Infof("Assignment for %s timed out", assignment.DeviceID)
 				pendingAssignments.Remove(a)
 				continue
 			}
 
 			containerID, err := cli.GetContainerIDByMountedDevice(assignment.ContainerPath)
 			if err != nil {
-				glog.V(3).Info("Container was not found")
+				glog.V(3).Infof("Container was not found, due to: %s", err.Error())
 				continue
 			}
 
 			containerPid, err := cli.GetPidByContainerID(containerID)
 			if err != nil {
-				glog.V(3).Info("Failed to obtain container's pid")
+				glog.V(3).Info("Failed to obtain container's pid, due to: %s", err.Error())
 				continue
 			}
 
 			err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
 			if err == nil {
-				glog.V(3).Info("Successfully attached pod to a bridge")
+				glog.V(3).Infof("Successfully attached pod to a bridge: %s", nbdp.bridge)
 			} else {
-				glog.V(3).Infof("Pod attachment failed with: %s", err)
+				glog.V(3).Infof("Pod attachment failed with: %s", err.Error())
 			}
 			pendingAssignments.Remove(a)
 		}
@@ -205,25 +206,94 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	linkName := randInterfaceName()
 
+	// fetch the bridge, this is expected to succeed since attachPodToBridge is invoked only if bridge exists
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
 		return err
 	}
 
-	link := &netlink.Veth{LinkAttrs: netlink.LinkAttrs{Name: linkName, MasterIndex: bridge.Attrs().Index}, PeerName: nicName}
+	// create the virtual interface that should be connected to the bridge
+	link := &netlink.Veth{
+		LinkAttrs: netlink.LinkAttrs{
+			Name:        linkName,
+			MasterIndex: bridge.Attrs().Index,
+			MTU:         bridge.Attrs().MTU,
+			NetNsID:     bridge.Attrs().NetNsID},
+		PeerName: nicName}
 
 	err = netlink.LinkAdd(link)
 	if err != nil {
 		return err
 	}
 
+	// set interface up
+	err = netlink.LinkSetUp(link)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// get the peer interface
 	peer, err := netlink.LinkByName(nicName)
 	if err != nil {
 		netlink.LinkDel(link)
 		return err
 	}
 
+	// add peer to pod namespace
 	err = netlink.LinkSetNsPid(peer, containerPid)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// store current namespace
+	originalNS, err := netns.Get()
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// get namespace of the pod
+	ns, err := netns.GetFromPid(containerPid)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set to pod namespace so that interface values could be set
+	err = netns.Set(ns)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set back to the original namespace before we leave this function
+	defer func() {
+		setErr := netns.Set(originalNS)
+		if setErr != nil {
+			// if we cannot go back the the original namespace
+			// the plugin cannot be used anymore and a restart is needed
+			panic(setErr)
+		}
+	}()
+
+	// get the peer back, now from the new namespace
+	peer, err = netlink.LinkByName(nicName)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set MTU on the peer
+	err = netlink.LinkSetMTU(peer, link.MTU)
+	if err != nil {
+		netlink.LinkDel(link)
+		return err
+	}
+
+	// set peer interface up
+	err = netlink.LinkSetUp(peer)
 	if err != nil {
 		netlink.LinkDel(link)
 		return err

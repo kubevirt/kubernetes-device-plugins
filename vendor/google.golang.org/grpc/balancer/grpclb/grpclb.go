@@ -16,19 +16,29 @@
  *
  */
 
-package grpc
+//go:generate ./regenerate.sh
+
+// Package grpclb defines a grpclb balancer.
+//
+// To install grpclb balancer, import this package as:
+//    import _ "google.golang.org/grpc/balancer/grpclb"
+package grpclb
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	durationpb "github.com/golang/protobuf/ptypes/duration"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/balancer"
+	lbpb "google.golang.org/grpc/balancer/grpclb/grpc_lb_v1"
 	"google.golang.org/grpc/connectivity"
-	lbpb "google.golang.org/grpc/grpclb/grpc_lb_v1/messages"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/internal/backoff"
 	"google.golang.org/grpc/resolver"
 )
 
@@ -38,7 +48,21 @@ const (
 	grpclbName             = "grpclb"
 )
 
-func convertDuration(d *lbpb.Duration) time.Duration {
+var (
+	// defaultBackoffConfig configures the backoff strategy that's used when the
+	// init handshake in the RPC is unsuccessful. It's not for the clientconn
+	// reconnect backoff.
+	//
+	// It has the same value as the default grpc.DefaultBackoffConfig.
+	//
+	// TODO: make backoff configurable.
+	defaultBackoffConfig = backoff.Exponential{
+		MaxDelay: 120 * time.Second,
+	}
+	errServerTerminatedConnection = fmt.Errorf("grpclb: failed to recv server list: server terminated connection")
+)
+
+func convertDuration(d *durationpb.Duration) time.Duration {
 	if d == nil {
 		return 0
 	}
@@ -49,11 +73,11 @@ func convertDuration(d *lbpb.Duration) time.Duration {
 // Mostly copied from generated pb.go file.
 // To avoid circular dependency.
 type loadBalancerClient struct {
-	cc *ClientConn
+	cc *grpc.ClientConn
 }
 
-func (c *loadBalancerClient) BalanceLoad(ctx context.Context, opts ...CallOption) (*balanceLoadClientStream, error) {
-	desc := &StreamDesc{
+func (c *loadBalancerClient) BalanceLoad(ctx context.Context, opts ...grpc.CallOption) (*balanceLoadClientStream, error) {
+	desc := &grpc.StreamDesc{
 		StreamName:    "BalanceLoad",
 		ServerStreams: true,
 		ClientStreams: true,
@@ -67,7 +91,7 @@ func (c *loadBalancerClient) BalanceLoad(ctx context.Context, opts ...CallOption
 }
 
 type balanceLoadClientStream struct {
-	ClientStream
+	grpc.ClientStream
 }
 
 func (x *balanceLoadClientStream) Send(m *lbpb.LoadBalanceRequest) error {
@@ -88,16 +112,16 @@ func init() {
 
 // newLBBuilder creates a builder for grpclb.
 func newLBBuilder() balancer.Builder {
-	return NewLBBuilderWithFallbackTimeout(defaultFallbackTimeout)
+	return newLBBuilderWithFallbackTimeout(defaultFallbackTimeout)
 }
 
-// NewLBBuilderWithFallbackTimeout creates a grpclb builder with the given
+// newLBBuilderWithFallbackTimeout creates a grpclb builder with the given
 // fallbackTimeout. If no response is received from the remote balancer within
 // fallbackTimeout, the backend addresses from the resolved address list will be
 // used.
 //
 // Only call this function when a non-default fallback timeout is needed.
-func NewLBBuilderWithFallbackTimeout(fallbackTimeout time.Duration) balancer.Builder {
+func newLBBuilderWithFallbackTimeout(fallbackTimeout time.Duration) balancer.Builder {
 	return &lbBuilder{
 		fallbackTimeout: fallbackTimeout,
 	}
@@ -134,11 +158,12 @@ func (b *lbBuilder) Build(cc balancer.ClientConn, opt balancer.BuildOptions) bal
 		doneCh:          make(chan struct{}),
 
 		manualResolver: r,
-		csEvltr:        &connectivityStateEvaluator{},
+		csEvltr:        &balancer.ConnectivityStateEvaluator{},
 		subConns:       make(map[resolver.Address]balancer.SubConn),
 		scStates:       make(map[balancer.SubConn]connectivity.State),
 		picker:         &errPicker{err: balancer.ErrNoSubConnAvailable},
-		clientStats:    &rpcStats{},
+		clientStats:    newRPCStats(),
+		backoff:        defaultBackoffConfig, // TODO: make backoff configurable.
 	}
 
 	return lb
@@ -156,7 +181,9 @@ type lbBalancer struct {
 	// send to remote LB ClientConn through this resolver.
 	manualResolver *lbManualResolver
 	// The ClientConn to talk to the remote balancer.
-	ccRemoteLB *ClientConn
+	ccRemoteLB *grpc.ClientConn
+	// backoff for calling remote balancer.
+	backoff backoff.Strategy
 
 	// Support client side load reporting. Each picker gets a reference to this,
 	// and will update its content.
@@ -173,7 +200,7 @@ type lbBalancer struct {
 	// but with only READY SCs will be gerenated.
 	backendAddrs []resolver.Address
 	// Roundrobin functionalities.
-	csEvltr  *connectivityStateEvaluator
+	csEvltr  *balancer.ConnectivityStateEvaluator
 	state    connectivity.State
 	subConns map[resolver.Address]balancer.SubConn   // Used to new/remove SubConn.
 	scStates map[balancer.SubConn]connectivity.State // Used to filter READY SubConns.
@@ -243,7 +270,7 @@ func (lb *lbBalancer) HandleSubConnStateChange(sc balancer.SubConn, s connectivi
 	}
 
 	oldAggrState := lb.state
-	lb.state = lb.csEvltr.recordTransition(oldS, s)
+	lb.state = lb.csEvltr.RecordTransition(oldS, s)
 
 	// Regenerate picker when one of the following happens:
 	//  - this sc became ready from not-ready

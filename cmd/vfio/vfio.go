@@ -27,7 +27,7 @@ import (
 	"os"
 
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
-	"kubevirt.io/kubernetes-device-plugins/pkg/pci"
+	"github.com/kubevirt/kubernetes-device-plugins/pkg/pci"
 )
 
 func main() {
