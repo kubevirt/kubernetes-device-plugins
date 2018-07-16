@@ -2,10 +2,12 @@ package bridge
 
 import (
 	"container/list"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -23,6 +25,9 @@ const (
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
 	assignmentTimeout   = 30 * time.Minute
+	protocolEthernet    = "Ethernet"
+	envVarNamePrefix    = "NETWORK_INTERFACE_RESOURCES_"
+	envVarNameSuffixLen = 8
 )
 
 type NetworkBridgeDevicePlugin struct {
@@ -34,6 +39,16 @@ type Assignment struct {
 	DeviceID      string
 	ContainerPath string
 	Created       time.Time
+}
+
+type vnic struct {
+	Name     string `json:"name"`
+	Protocol string `json:"protocol"`
+}
+
+type networkInterfaceResources struct {
+	Name       string `json:"name"`
+	Interfaces []vnic `json:"interfaces"`
 }
 
 func (nbdp *NetworkBridgeDevicePlugin) Start() error {
@@ -114,6 +129,7 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 
 	for _, req := range r.ContainerRequests {
 		var devices []*pluginapi.DeviceSpec
+		var vnics []vnic
 		for _, nic := range req.DevicesIDs {
 			dev := new(pluginapi.DeviceSpec)
 			assignmentPath := getAssignmentPath(nbdp.bridge, nic)
@@ -121,6 +137,7 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 			dev.ContainerPath = assignmentPath
 			dev.Permissions = "r"
 			devices = append(devices, dev)
+			vnics = append(vnics, vnic{nic, protocolEthernet})
 
 			nbdp.assignmentCh <- &Assignment{
 				nic,
@@ -128,8 +145,27 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 				time.Now(),
 			}
 		}
+
+		vnicsPerInterface := networkInterfaceResources{
+			Name:       fmt.Sprintf("%s/%s", resourceNamespace, nbdp.bridge),
+			Interfaces: vnics,
+		}
+
+		envVarName := fmt.Sprintf("%s%s", envVarNamePrefix, strings.ToUpper(randString(envVarNameSuffixLen)))
+		marshalled, err := json.Marshal(vnicsPerInterface)
+		if err != nil {
+			glog.V(3).Info("Failed to marshal network interface description due to: %s", err.Error())
+			continue
+		}
+
+		envs := map[string]string{
+			envVarName: string(marshalled),
+		}
+
 		response.ContainerResponses = append(response.ContainerResponses, &pluginapi.ContainerAllocateResponse{
-			Devices: devices})
+			Devices: devices, Envs: envs,
+		})
+
 	}
 
 	return &response, nil
@@ -303,9 +339,14 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 }
 
 func randInterfaceName() string {
-	b := make([]byte, interfaceNameLen-len(interfaceNamePrefix))
+	suffixLength := interfaceNameLen - len(interfaceNamePrefix)
+	return interfaceNamePrefix + randString(suffixLength)
+}
+
+func randString(length int) string {
+	b := make([]byte, length)
 	for i := range b {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
-	return interfaceNamePrefix + string(b)
+	return string(b)
 }
