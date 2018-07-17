@@ -9,13 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"sync"
+
 	"github.com/golang/glog"
 	"github.com/kubevirt/kubernetes-device-plugins/pkg/dockerutils"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
-	"sync"
 )
 
 const (
@@ -33,6 +34,7 @@ const (
 type NetworkBridgeDevicePlugin struct {
 	bridge       string
 	assignmentCh chan *Assignment
+	cleaner      *cleaner
 }
 
 type Assignment struct {
@@ -55,7 +57,10 @@ func (nbdp *NetworkBridgeDevicePlugin) Start() error {
 	if err != nil {
 		glog.Exitf("Failed to create fake device: %s", err)
 	}
+
 	go nbdp.attachPods()
+	go nbdp.cleaner.Run()
+
 	return nil
 }
 
@@ -213,7 +218,7 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 					}
 
 					attachMutex.Lock()
-					err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
+					err = nbdp.attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
 					attachMutex.Unlock()
 
 					if err == nil {
@@ -232,7 +237,7 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 	}
 }
 
-func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
+func (nbdp *NetworkBridgeDevicePlugin) attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 	linkName := randInterfaceName()
 
 	// fetch the bridge, this is expected to succeed since attachPodToBridge is invoked only if bridge exists
@@ -327,6 +332,10 @@ func attachPodToBridge(bridgeName, nicName string, containerPid int) error {
 		netlink.LinkDel(link)
 		return err
 	}
+
+	// register host interface and container PID to cleaner, so the interface
+	// can be removed from the host once the container is gone
+	nbdp.cleaner.Register(linkName, containerPid)
 
 	return nil
 }
