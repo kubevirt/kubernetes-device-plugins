@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"container/list"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -16,6 +15,7 @@ import (
 	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	"sync"
 )
 
 const (
@@ -24,7 +24,7 @@ const (
 	interfaceNameLen    = 15
 	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
-	assignmentTimeout   = 30 * time.Minute
+	attachmentRetries   = 60
 	protocolEthernet    = "Ethernet"
 	envVarNamePrefix    = "NETWORK_INTERFACE_RESOURCES_"
 	envVarNameSuffixLen = 8
@@ -38,7 +38,6 @@ type NetworkBridgeDevicePlugin struct {
 type Assignment struct {
 	DeviceID      string
 	ContainerPath string
-	Created       time.Time
 }
 
 type vnic struct {
@@ -142,7 +141,6 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 			nbdp.assignmentCh <- &Assignment{
 				nic,
 				assignmentPath,
-				time.Now(),
 			}
 		}
 
@@ -189,53 +187,48 @@ func getAssignmentPath(bridge string, nic string) string {
 }
 
 func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
-	pendingAssignments := list.New()
-
 	cli, err := dockerutils.NewClient()
 	if err != nil {
 		glog.V(3).Info("Failed to connect to Docker")
 		panic(err)
 	}
 
+	var attachMutex sync.Mutex
+
 	for {
-		select {
-		case assignment := <-nbdp.assignmentCh:
+		go func(assignment *Assignment) {
 			glog.V(3).Infof("Received a new assignment: %s", assignment)
-			pendingAssignments.PushBack(assignment)
-		default:
-			time.Sleep(time.Second)
-		}
+			for i := 1; i <= attachmentRetries; i++ {
+				if attached := func() bool {
+					containerID, err := cli.GetContainerIDByMountedDevice(assignment.ContainerPath)
+					if err != nil {
+						glog.V(3).Infof("Container was not found, due to: %s", err.Error())
+						return false
+					}
 
-		for a := pendingAssignments.Front(); a != nil; a = a.Next() {
-			assignment := a.Value.(*Assignment)
-			glog.V(3).Infof("Handling pending assignment for: %s", assignment.DeviceID)
+					containerPid, err := cli.GetPidByContainerID(containerID)
+					if err != nil {
+						glog.V(3).Info("Failed to obtain container's pid, due to: %s", err.Error())
+						return false
+					}
 
-			if time.Now().After(assignment.Created.Add(assignmentTimeout)) {
-				glog.V(3).Infof("Assignment for %s timed out", assignment.DeviceID)
-				pendingAssignments.Remove(a)
-				continue
+					attachMutex.Lock()
+					err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
+					attachMutex.Unlock()
+
+					if err == nil {
+						glog.V(3).Infof("Successfully attached pod to a bridge: %s", nbdp.bridge)
+						return true
+					}
+
+					glog.V(3).Infof("Pod attachment failed with: %s", err.Error())
+					return false
+				}(); attached {
+					break
+				}
+				time.Sleep(time.Duration(i) * time.Second)
 			}
-
-			containerID, err := cli.GetContainerIDByMountedDevice(assignment.ContainerPath)
-			if err != nil {
-				glog.V(3).Infof("Container was not found, due to: %s", err.Error())
-				continue
-			}
-
-			containerPid, err := cli.GetPidByContainerID(containerID)
-			if err != nil {
-				glog.V(3).Info("Failed to obtain container's pid, due to: %s", err.Error())
-				continue
-			}
-
-			err = attachPodToBridge(nbdp.bridge, assignment.DeviceID, containerPid)
-			if err == nil {
-				glog.V(3).Infof("Successfully attached pod to a bridge: %s", nbdp.bridge)
-			} else {
-				glog.V(3).Infof("Pod attachment failed with: %s", err.Error())
-			}
-			pendingAssignments.Remove(a)
-		}
+		}(<-nbdp.assignmentCh)
 	}
 }
 
