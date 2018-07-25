@@ -4,8 +4,8 @@ import (
 	"sync"
 
 	"github.com/golang/glog"
-	"github.com/vishvananda/netlink"
 	monitor "github.com/kubevirt/kubernetes-device-plugins/pkg/netlink"
+	"github.com/vishvananda/netlink"
 )
 
 // interfaceAndPid is used to tranfer user provided data between Register function

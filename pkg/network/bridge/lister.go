@@ -42,6 +42,6 @@ func (bl BridgeLister) NewPlugin(bridge string) dpm.PluginInterface {
 	return &NetworkBridgeDevicePlugin{
 		bridge:       bridge,
 		assignmentCh: make(chan *Assignment),
-		cleaner:      newCleaner(),
+		//cleaner:      newCleaner(),
 	}
 }
