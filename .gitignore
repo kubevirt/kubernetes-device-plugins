@@ -3,3 +3,6 @@
 !*.*
 
 kubeconfig
+
+__pycache__/
+*.py[cod]

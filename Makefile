@@ -29,6 +29,9 @@ test:
 test-%:
 	go test ./$(subst -,/,$*)/...
 
+functest:
+	pytest tests
+
 docker-build: $(patsubst %, docker-build-%, $(DOCKERFILES))
 
 docker-build-%:
