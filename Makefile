@@ -47,5 +47,17 @@ clean-dep:
 	rm -f ./Gopkg.lock
 	rm -rf ./vendor
 
+cluster-up:
+	./cluster/up.sh
+
+cluster-down:
+	./cluster/down.sh
+
+cluster-sync: $(patsubst %, cluster-sync-%, $(DOCKERFILES))
+
+cluster-sync-%:
+	./cluster/build.sh $*
+	./cluster/sync.sh $*
+
 .PHONY: format build test docker-build docker-push docker-local-push dep clean-dep
 
