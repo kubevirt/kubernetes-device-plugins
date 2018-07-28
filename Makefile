@@ -63,4 +63,3 @@ cluster-sync-%:
 	./cluster/sync.sh $*
 
 .PHONY: format build test docker-build docker-push docker-local-push dep clean-dep
-
