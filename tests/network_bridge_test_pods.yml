@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: List
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: bridge-consumer-1
+  spec:
+    containers:
+    - name: alpine
+      image: alpine
+      securityContext:
+        privileged: true
+      command: ["/bin/sleep", "9999"]
+      resources:
+        limits:
+          bridge.network.kubevirt.io/mybr1: 1
+          bridge.network.kubevirt.io/mybr2: 1
+    nodeSelector:
+      kubernetes.io/hostname: node01
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: bridge-consumer-2
+  spec:
+    containers:
+    - name: alpine
+      image: alpine
+      securityContext:
+        privileged: true
+      command: ["/bin/sleep", "9999"]
+      resources:
+        limits:
+          bridge.network.kubevirt.io/mybr1: 1
+          bridge.network.kubevirt.io/mybr2: 1
+    nodeSelector:
+      kubernetes.io/hostname: node01
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: bridge-consumer-3
+  spec:
+    containers:
+    - name: alpine
+      image: alpine
+      securityContext:
+        privileged: true
+      command: ["/bin/sleep", "9999"]
+      resources:
+        limits:
+          bridge.network.kubevirt.io/mybr1: 1
+          bridge.network.kubevirt.io/mybr2: 1
+    nodeSelector:
+      kubernetes.io/hostname: node02
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    name: bridge-consumer-4
+  spec:
+    containers:
+    - name: alpine
+      image: alpine
+      securityContext:
+        privileged: true
+      command: ["/bin/sleep", "9999"]
+      resources:
+        limits:
+          bridge.network.kubevirt.io/mybr1: 1
+          bridge.network.kubevirt.io/mybr2: 1
+    nodeSelector:
+      kubernetes.io/hostname: node02
