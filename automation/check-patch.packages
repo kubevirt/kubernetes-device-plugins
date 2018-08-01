@@ -1,0 +1,5 @@
+docker
+git
+python-pip
+python-devel
+golang-1.9.4
