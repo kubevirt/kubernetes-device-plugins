@@ -8,6 +8,32 @@
   version = "v0.4.8"
 
 [[projects]]
+  name = "github.com/containernetworking/cni"
+  packages = [
+    "pkg/types",
+    "pkg/types/020",
+    "pkg/types/current"
+  ]
+  revision = "a7885cb6f8ab03fba07852ded351e4f5e7a112bf"
+  version = "v0.6.0"
+
+[[projects]]
+  name = "github.com/containernetworking/plugins"
+  packages = [
+    "pkg/ip",
+    "pkg/ns",
+    "pkg/utils/hwaddr"
+  ]
+  revision = "19f2f28178aa88772f69c4eeb3793d4a63c244b0"
+  version = "v0.7.3"
+
+[[projects]]
+  name = "github.com/coreos/go-iptables"
+  packages = ["iptables"]
+  revision = "47f22b0dd3355c0ba570ba12b0b8a36bf214c04b"
+  version = "v0.4.0"
+
+[[projects]]
   name = "github.com/docker/distribution"
   packages = [
     "digest",
@@ -211,6 +237,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "98a852627f6b61a937b86256440d2be6a200c18fce341a10232565cda36c4f99"
+  inputs-digest = "a8fa649e6ec1f2990660fb1e83254cafef03729acb770d015394bd1bf7122360"
   solver-name = "gps-cdcl"
   solver-version = 1

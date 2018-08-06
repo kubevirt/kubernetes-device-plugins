@@ -1,3 +1,8 @@
+// GO version 1.10 or greater is required. Before that, switching namespaces in
+// long running processes in go did not work in a reliable way.
+
+// +build go1.10
+
 package bridge
 
 import (
@@ -6,15 +11,17 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
 	"sync"
 
+	"github.com/containernetworking/plugins/pkg/ip"
+	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/golang/glog"
 	"github.com/kubevirt/kubernetes-device-plugins/pkg/dockerutils"
 	"github.com/vishvananda/netlink"
-	"github.com/vishvananda/netns"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 )
@@ -23,7 +30,6 @@ const (
 	fakeDevicePath      = "/var/run/device-plugin-network-bridge-fakedev"
 	nicsPoolSize        = 100
 	interfaceNameLen    = 15
-	interfaceNamePrefix = "nic_"
 	letterBytes         = "abcdefghijklmnopqrstuvwxyz0123456789"
 	attachmentRetries   = 60
 	protocolEthernet    = "Ethernet"
@@ -235,108 +241,45 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 	}
 }
 
-func (nbdp *NetworkBridgeDevicePlugin) attachPodToBridge(bridgeName, nicName string, containerPid int) error {
-	linkName := randInterfaceName()
+func (nbdp *NetworkBridgeDevicePlugin) attachPodToBridge(bridgeIfaceName, contIfaceName string, containerPid int) error {
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
 
-	// fetch the bridge, this is expected to succeed since attachPodToBridge is invoked only if bridge exists
-	bridge, err := netlink.LinkByName(bridgeName)
+	var hostIfaceName string
+
+	contNS, err := ns.GetNS(fmt.Sprintf("/proc/%d/ns/net", containerPid))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open netns %q: %v", containerPid, err)
 	}
+	defer contNS.Close()
 
-	// create the virtual interface that should be connected to the bridge
-	link := &netlink.Veth{
-		LinkAttrs: netlink.LinkAttrs{
-			Name:        linkName,
-			MasterIndex: bridge.Attrs().Index,
-			MTU:         bridge.Attrs().MTU,
-			NetNsID:     bridge.Attrs().NetNsID},
-		PeerName: nicName}
-
-	err = netlink.LinkAdd(link)
-	if err != nil {
-		return err
-	}
-
-	// set interface up
-	err = netlink.LinkSetUp(link)
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// get the peer interface
-	peer, err := netlink.LinkByName(nicName)
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// add peer to pod namespace
-	err = netlink.LinkSetNsPid(peer, containerPid)
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// store current namespace
-	originalNS, err := netns.Get()
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// get namespace of the pod
-	ns, err := netns.GetFromPid(containerPid)
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// set to pod namespace so that interface values could be set
-	err = netns.Set(ns)
-	if err != nil {
-		netlink.LinkDel(link)
-		return err
-	}
-
-	// set back to the original namespace before we leave this function
-	defer func() {
-		setErr := netns.Set(originalNS)
-		if setErr != nil {
-			// if we cannot go back the the original namespace
-			// the plugin cannot be used anymore and a restart is needed
-			panic(setErr)
+	err = contNS.Do(func(hostNS ns.NetNS) error {
+		hostVeth, _, err := ip.SetupVeth(contIfaceName, 1500, hostNS)
+		if err != nil {
+			return err
 		}
-	}()
-
-	// get the peer back, now from the new namespace
-	peer, err = netlink.LinkByName(nicName)
+		hostIfaceName = hostVeth.Name
+		return nil
+	})
 	if err != nil {
-		netlink.LinkDel(link)
-		return err
+		return nil
 	}
 
-	// set MTU on the peer
-	err = netlink.LinkSetMTU(peer, link.MTU)
+	br, err := netlink.LinkByName(bridgeIfaceName)
 	if err != nil {
-		netlink.LinkDel(link)
-		return err
+		return fmt.Errorf("failed to lookup %q: %v", bridgeIfaceName, err)
 	}
 
-	// set peer interface up
-	err = netlink.LinkSetUp(peer)
+	hostVeth, err := netlink.LinkByName(hostIfaceName)
 	if err != nil {
-		netlink.LinkDel(link)
-		return err
+		return fmt.Errorf("failed to lookup %q: %v", hostIfaceName, err)
+	}
+
+	if err := netlink.LinkSetMaster(hostVeth, br.(*netlink.Bridge)); err != nil {
+		return fmt.Errorf("failed to connect %q to bridge %v: %v", hostIfaceName, bridgeIfaceName, err)
 	}
 
 	return nil
-}
-
-func randInterfaceName() string {
-	suffixLength := interfaceNameLen - len(interfaceNamePrefix)
-	return interfaceNamePrefix + randString(suffixLength)
 }
 
 func randString(length int) string {

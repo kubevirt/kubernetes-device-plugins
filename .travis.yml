@@ -1,6 +1,6 @@
 language: go
 
-go: 1.9.x
+go: 1.10.x
 go_import_path: github.com/kubevirt/kubernetes-device-plugins
 
 script: make build test docker-build

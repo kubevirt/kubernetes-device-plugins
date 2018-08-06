@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import itertools
+import time
 import yaml
 
 from kubernetes import client
@@ -119,13 +120,15 @@ def test_bridge_device_plugin(namespace):
             pod='bridge-consumer-1',
             namespace=namespace,
             resource='bridge.network.kubevirt.io/mybr1',
-            address='192.168.1.21/24'
+            address='192.168.1.21/24',
+            timeout=30
         )
         _set_address_on_resource_interface(
             pod='bridge-consumer-4',
             namespace=namespace,
             resource='bridge.network.kubevirt.io/mybr1',
-            address='192.168.1.24/24'
+            address='192.168.1.24/24',
+            timeout=30
         )
 
         # Check if there is connectivity between two pods running on different
@@ -135,12 +138,27 @@ def test_bridge_device_plugin(namespace):
             namespace=namespace,
             resource='bridge.network.kubevirt.io/mybr1'
         )
+
         netutils.assert_ping(
             pod='bridge-consumer-1',
             namespace=namespace,
             destination='192.168.1.24',
             interface=interface
         )
+
+        # Remove consumer pods
+        for pod in consumer_pods['items']:
+            v1.delete_namespaced_pod(
+                name=pod['metadata']['name'],
+                namespace=namespace,
+                body=client.V1DeleteOptions(
+                    propagation_policy='Foreground'
+                )
+            )
+
+        # Check that host side of veth pairs were removed
+        for node in ['node01', 'node02']:
+            _assert_host_veth_cleaned_up(node, timeout=180)
 
 
 @contextmanager
@@ -162,14 +180,29 @@ sudo ip link set mybr{net_id} up
         yield
     finally:
         for net_id in [1, 2]:
+            pass
             nodes.ssh(node, """
 sudo ip link delete eth0.{net_id} &&
 sudo ip link delete mybr{net_id}
             """.format(net_id=net_id).split())
 
 
-def _set_address_on_resource_interface(pod, namespace, resource, address):
+def _set_address_on_resource_interface(
+        pod, namespace, resource, address, timeout=0):
     interface = _get_interface_of_resource(pod, namespace, resource)
+
+    # wait for interface to appear in the pod
+    for i in range(0, timeout+1):
+        ip_link_raw = kubeutils.run(
+            pod=pod,
+            namespace=namespace,
+            command='ip link'
+        )
+        if 'mybr1' in ip_link_raw:
+            break
+        else:
+            time.sleep(1)
+
     kubeutils.run(
         pod=pod,
         namespace=namespace,
@@ -183,3 +216,17 @@ def _get_interface_of_resource(pod, namespace, resource):
         namespace=namespace
     )
     return interfaces_by_resource[resource][0]['name']
+
+
+def _assert_host_veth_cleaned_up(node, timeout=0):
+    for i in range(0, timeout+1):
+        ip_link_raw = nodes.ssh(node, ['sudo', 'ip', 'link'])
+        veth_found = any(['veth' in line and 'master mybr' in line
+                          for line in ip_link_raw])
+        if veth_found:
+            return
+        elif i == timeout:
+            raise AssertionError(
+                'Host veth interface connected to DP bridge was detected')
+        else:
+            time.sleep(1)
