@@ -34,7 +34,6 @@ const (
 type NetworkBridgeDevicePlugin struct {
 	bridge       string
 	assignmentCh chan *Assignment
-	//cleaner      *cleaner
 }
 
 type Assignment struct {
@@ -59,7 +58,6 @@ func (nbdp *NetworkBridgeDevicePlugin) Start() error {
 	}
 
 	go nbdp.attachPods()
-	//go nbdp.cleaner.Run()
 
 	return nil
 }
@@ -332,10 +330,6 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPodToBridge(bridgeName, nicName str
 		netlink.LinkDel(link)
 		return err
 	}
-
-	// register host interface and container PID to cleaner, so the interface
-	// can be removed from the host once the container is gone
-	//nbdp.cleaner.Register(linkName, containerPid)
 
 	return nil
 }
