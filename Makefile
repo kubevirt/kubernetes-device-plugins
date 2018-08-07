@@ -35,8 +35,7 @@ functest:
 docker-build: $(patsubst %, docker-build-%, $(DOCKERFILES))
 
 docker-build-%:
-	@cp ${GOPATH}/bin/${notdir $(subst -,/,$*)} ./cmd/$(subst -,/,$*)
-	docker build -t ${REGISTRY}/device-plugin-$*:latest ./cmd/$(subst -,/,$*)
+	docker build -t ${REGISTRY}/device-plugin-$*:latest -f ./cmd/$(subst -,/,$*)/Dockerfile .
 
 docker-push: $(patsubst %, docker-push-%, $(DOCKERFILES))
 
