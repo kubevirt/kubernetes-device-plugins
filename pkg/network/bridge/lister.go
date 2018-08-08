@@ -1,11 +1,14 @@
 package bridge
 
 import (
-	"os"
 	"strings"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -22,19 +25,36 @@ func (bl BridgeLister) GetResourceNamespace() string {
 }
 
 func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
-	var plugins = make(dpm.PluginNameList, 0)
-
-	bridgesListRaw := os.Getenv(BridgesListEnvironmentVariable)
-	bridges := strings.Split(bridgesListRaw, ",")
-
-	for _, bridgeName := range bridges {
-		if len(bridgeName) > maxBridgeNameLength {
-			glog.Fatalf("Bridge name (%s) cannot be longer than %d characters", bridgeName, maxBridgeNameLength)
-		}
-		plugins = append(plugins, bridgeName)
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
 	}
 
-	pluginListCh <- plugins
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for {
+		var plugins = make(dpm.PluginNameList, 0)
+
+		configmap, err := clientset.CoreV1().ConfigMaps("kube-system").Get("device-plugin-network-bridge", metav1.GetOptions{})
+		if err != nil {
+			panic(err.Error())
+		}
+
+		bridges := strings.Split(configmap.Data["bridges"], ",")
+
+		for _, bridgeName := range bridges {
+			if len(bridgeName) > maxBridgeNameLength {
+				glog.Fatalf("Bridge name (%s) cannot be longer than %d characters", bridgeName, maxBridgeNameLength)
+			}
+			plugins = append(plugins, bridgeName)
+		}
+
+		pluginListCh <- plugins
+		time.Sleep(10 * time.Second)
+	}
 }
 
 func (bl BridgeLister) NewPlugin(bridge string) dpm.PluginInterface {
