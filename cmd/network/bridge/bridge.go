@@ -10,11 +10,6 @@ import (
 func main() {
 	flag.Parse()
 
-	// _, bridgesListDefined := os.LookupEnv(bridge.BridgesListEnvironmentVariable)
-	// if !bridgesListDefined {
-	// 	glog.Exit("BRIDGES environment variable must be set in format BRIDGE[,BRIDGE[...]]")
-	// }
-
 	manager := dpm.NewManager(bridge.BridgeLister{})
 	manager.Run()
 }
