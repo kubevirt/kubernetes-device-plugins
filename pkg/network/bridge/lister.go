@@ -6,7 +6,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -53,16 +53,16 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
 
 	}
 
-	configmap, err := clientset.CoreV1().ConfigMaps("kube-system").Get("device-plugin-network-bridge", metav1.GetOptions{})
-	if err != nil {
-		glog.Fatalf(err.Error())
-	}
-
-	pluginListCh <- getBridgeList(configmap)
-
 	watchlist := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), string(v1.ResourceConfigMaps), v1.NamespaceAll, fields.Everything())
 
 	_, informer := cache.NewInformer(watchlist, &v1.ConfigMap{}, 0, cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			cm := obj.(*v1.ConfigMap)
+			if cm.GetName() == "device-plugin-network-bridge" {
+				glog.V(3).Infof("Config map was updated: %v", cm.Data)
+				pluginListCh <- getBridgeList(cm)
+			}
+		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			cm := newObj.(*v1.ConfigMap)
 			if cm.GetName() == "device-plugin-network-bridge" {
