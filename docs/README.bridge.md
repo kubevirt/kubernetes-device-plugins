@@ -8,6 +8,8 @@ This device plugin allows user to attach pods to existing bridges on nodes.
 
 ## Usage
 
+_The plugin must be run in the kube-system namespace._
+
 The plugin does not create bridges, thus it's up to the user to create any
 bridge on the nodes of a cluster.
 If a bridge doesn't exist, the user can create it (with root privileges) as
@@ -74,9 +76,9 @@ $ kubectl exec -it bridge-consumer ip link
     link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
 2: sit0@NONE: <NOARP> mtu 1480 qdisc noop qlen 1
     link/sit 0.0.0.0 brd 0.0.0.0
-4: eth0@if10: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1460 qdisc noqueue 
+4: eth0@if10: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1460 qdisc noqueue
     link/ether 0a:58:0a:01:00:04 brd ff:ff:ff:ff:ff:ff
-11: mybr0-20@if12: <BROADCAST,MULTICAST,M-DOWN> mtu 1500 qdisc noop 
+11: mybr0-20@if12: <BROADCAST,MULTICAST,M-DOWN> mtu 1500 qdisc noop
     link/ether 96:21:62:8b:11:9e brd ff:ff:ff:ff:ff:ff
 ```
 

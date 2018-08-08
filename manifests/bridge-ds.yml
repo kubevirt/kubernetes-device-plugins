@@ -4,6 +4,7 @@ metadata:
   labels:
     name: device-plugin-network-bridge
   name: device-plugin-network-bridge
+  namespace: kube-system
 spec:
   selector:
     matchLabels:
@@ -20,12 +21,6 @@ spec:
         image: quay.io/kubevirt/device-plugin-network-bridge:latest
         securityContext:
           privileged: true
-        env:
-        - name: BRIDGES
-          valueFrom:
-            configMapKeyRef:
-             name: device-plugin-network-bridge
-             key: bridges
         volumeMounts:
           - name: var-run
             mountPath: /var/run

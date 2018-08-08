@@ -20,7 +20,7 @@ const (
 	maxBridgeNameLength = 12
 )
 
-func GetBridgeList(configMap *v1.ConfigMap) dpm.PluginNameList {
+func getBridgeList(configMap *v1.ConfigMap) dpm.PluginNameList {
 	var plugins = make(dpm.PluginNameList, 0)
 
 	bridges := strings.Split(configMap.Data["bridges"], ",")
@@ -44,20 +44,21 @@ func (bl BridgeLister) GetResourceNamespace() string {
 func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		glog.Fatalf(err.Error())
 	}
 
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		glog.Fatalf(err.Error())
+
 	}
 
 	configmap, err := clientset.CoreV1().ConfigMaps("kube-system").Get("device-plugin-network-bridge", metav1.GetOptions{})
 	if err != nil {
-		panic(err.Error())
+		glog.Fatalf(err.Error())
 	}
 
-	pluginListCh <- GetBridgeList(configmap)
+	pluginListCh <- getBridgeList(configmap)
 
 	watchlist := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), string(v1.ResourceConfigMaps), v1.NamespaceAll, fields.Everything())
 
@@ -65,8 +66,8 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			cm := newObj.(*v1.ConfigMap)
 			if cm.GetName() == "device-plugin-network-bridge" {
-				glog.Infoln(cm.Data)
-				pluginListCh <- GetBridgeList(cm)
+				glog.V(3).Infof("Config map was updated: %v", cm.Data)
+				pluginListCh <- getBridgeList(cm)
 			}
 		},
 	})
