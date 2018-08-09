@@ -6,7 +6,6 @@ import (
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	"k8s.io/api/core/v1"
-	// metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -18,6 +17,7 @@ const (
 	BridgesListEnvironmentVariable = "BRIDGES"
 	// maximal interface name length (15) - nic index suffix (3)
 	maxBridgeNameLength = 12
+	configMapName       = "device-plugin-network-bridge"
 )
 
 func getBridgeList(configMap *v1.ConfigMap) dpm.PluginNameList {
@@ -58,14 +58,22 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
 	_, informer := cache.NewInformer(watchlist, &v1.ConfigMap{}, 0, cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			cm := obj.(*v1.ConfigMap)
-			if cm.GetName() == "device-plugin-network-bridge" {
+			if cm.GetName() == configMapName {
 				glog.V(3).Infof("Config map was updated: %v", cm.Data)
 				pluginListCh <- getBridgeList(cm)
 			}
 		},
+		DeleteFunc: func(obj interface{}) {
+			cm := obj.(*v1.ConfigMap)
+			if cm.GetName() == configMapName {
+				glog.V(3).Infof("Config map was deleted: %v", cm.Data)
+				var plugins = make(dpm.PluginNameList, 0)
+				pluginListCh <- plugins
+			}
+		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
 			cm := newObj.(*v1.ConfigMap)
-			if cm.GetName() == "device-plugin-network-bridge" {
+			if cm.GetName() == configMapName {
 				glog.V(3).Infof("Config map was updated: %v", cm.Data)
 				pluginListCh <- getBridgeList(cm)
 			}
