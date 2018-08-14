@@ -26,7 +26,7 @@ $ ip link show mybr0
 Now the user must specify list of bridges that should be exposed to pods:
 
 ```bash
-$ kubectl create configmap device-plugin-network-bridge --from-literal=bridges="mybr0"
+$ kubectl create configmap device-plugin-network-bridge --from-literal=bridges="mybr0" --namespace=kube-system
 configmap "device-plugin-network-bridge" created
 ```
 
