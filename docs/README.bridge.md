@@ -8,7 +8,34 @@ This device plugin allows user to attach pods to existing bridges on nodes.
 
 ## Usage
 
-_The plugin must be run in the kube-system namespace._
+The plugin needs permission to watch configmaps so a service account must be set up.
+
+```
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: bridge-role
+  namespace:
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: bridge-binding
+  namespace:
+subjects:
+- kind: ServiceAccount
+  name: bridge-sa
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: bridge-role
+  apiGroup: rbac.authorization.k8s.io
+```
 
 The plugin does not create bridges, thus it's up to the user to create any
 bridge on the nodes of a cluster.

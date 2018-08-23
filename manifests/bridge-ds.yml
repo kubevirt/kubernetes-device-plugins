@@ -1,3 +1,28 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: bridge-role
+  namespace:
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: bridge-binding
+  namespace:
+subjects:
+- kind: ServiceAccount
+  name: bridge-sa
+  namespace: kube-system
+roleRef:
+  kind: Role
+  name: bridge-role
+  apiGroup: rbac.authorization.k8s.io
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -14,6 +39,7 @@ spec:
       labels:
         name: device-plugin-network-bridge
     spec:
+      serviceAccountName: bridge-sa
       hostNetwork: true
       hostPID: true
       containers:

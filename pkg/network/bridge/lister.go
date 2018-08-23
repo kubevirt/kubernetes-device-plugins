@@ -53,7 +53,7 @@ func (bl BridgeLister) Discover(pluginListCh chan dpm.PluginNameList) {
 
 	}
 
-	watchlist := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), string(v1.ResourceConfigMaps), "kube-system", fields.Everything())
+	watchlist := cache.NewListWatchFromClient(clientset.CoreV1().RESTClient(), string(v1.ResourceConfigMaps), v1.NamespaceAll, fields.Everything())
 
 	_, informer := cache.NewInformer(watchlist, &v1.ConfigMap{}, 0, cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
