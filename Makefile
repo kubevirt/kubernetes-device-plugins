@@ -1,5 +1,5 @@
 REGISTRY ?= quay.io/kubevirt
-
+# dummy change
 PLUGINS = $(sort \
 		  $(subst /,-,\
 		  $(patsubst cmd/%/,%,\
