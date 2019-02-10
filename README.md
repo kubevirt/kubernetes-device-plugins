@@ -20,10 +20,11 @@ handling for common patterns.
 
 Each plugin may have it's own build instructions in the linked README.md.
 
-* [VFIO](docs/README.vfio.md)
+* [FUSE](docs/README.fuse.md)
 * [KVM](docs/README.kvm.md)
 * Network
   * [Bridge](docs/README.bridge.md)
+* [VFIO](docs/README.vfio.md)
 
 ## Creating Device Plugin
 
