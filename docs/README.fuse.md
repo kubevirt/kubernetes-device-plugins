@@ -69,8 +69,7 @@ spec:
               devices.kubevirt.io/fuse: "1"
 ```
 
-The device does not need a priviliged container to use it, but it does require the `mount` system call and CAP_SETUID. The `mount` system call can be made
-available by a seccomp profile.
+The device does not need a priviliged container to use it, but it does require the `mount` system call and CAP_SETUID. The `mount` and `umount` system calls can be made available by a [security context (seccomp) profile](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
 
 ## Issues
 

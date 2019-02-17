@@ -31,7 +31,7 @@ func (l FuseLister) GetResourceNamespace() string {
 	return Namespace
 }
 
-// Discovery discovers all FUSE devices within the system.
+// Discovery discovers the FUSE device within the system.
 func (l FuseLister) Discover(pluginListCh chan dpm.PluginNameList) {
 	var plugins = make(dpm.PluginNameList, 0)
 
