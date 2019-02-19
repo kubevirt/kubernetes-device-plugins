@@ -2,26 +2,25 @@ package fuse
 
 import (
 	"os"
-	"strconv"
-
 	"context"
 	"github.com/golang/glog"
 	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
+	"fmt"
+	"time"
 )
 
 const (
-	FUSEPath  = "/dev/fuse"
-	FUSEName  = "fuse"
-	Namespace = "devices.kubevirt.io"
+	FUSEPath 		 = "/dev/fuse"
+	FUSEName  		= "fuse"
+	Namespace 		= "devices.kubevirt.io"
+	fusePoolSize 	= 128
 )
 
 type message struct{}
 
 type FusePlugin struct {
 	counter int
-	devs    []*pluginapi.Device
-	update  chan message
 }
 
 // object responsible for discovering initial pool of devices and their allocation.
@@ -45,30 +44,31 @@ func (l FuseLister) Discover(pluginListCh chan dpm.PluginNameList) {
 func (FuseLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 
-	return &FusePlugin{
-		counter: 0,
-		devs:    make([]*pluginapi.Device, 0),
-		update:  make(chan message),
-	}
+	return &FusePlugin{}
 }
 
 func (p *FusePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
-	// initialize with one available device
-	p.devs = append(p.devs, &pluginapi.Device{
-		ID:	FUSEName + strconv.Itoa(p.counter),
-		Health: pluginapi.Healthy,
-	})
+	// initialize devices
+	devs := p.generateDevices()
 
-	glog.V(3).Infof("Returning %d available devices", len(p.devs))
+	glog.V(3).Infof("Returning %d devices", len(devs))
 
-	s.Send(&pluginapi.ListAndWatchResponse{Devices: p.devs})
+	s.Send(&pluginapi.ListAndWatchResponse{Devices: devs})
 
 	for {
-		select {
-		case <-p.update:
-			s.Send(&pluginapi.ListAndWatchResponse{Devices: p.devs})
-		}
+		time.Sleep(60 * time.Second)
 	}
+}
+
+func (p *FusePlugin) generateDevices() []*pluginapi.Device {
+	var devs []*pluginapi.Device
+	for i := 0; i < fusePoolSize; i++ {
+		devs = append(devs, &pluginapi.Device{
+			ID: fmt.Sprintf("%s-%02d", FUSEName, i),
+			Health: pluginapi.Healthy,
+		})
+	}
+	return devs
 }
 
 func (p *FusePlugin) Allocate(ctx context.Context, request *pluginapi.AllocateRequest) (*pluginapi.AllocateResponse, error) {
@@ -76,15 +76,8 @@ func (p *FusePlugin) Allocate(ctx context.Context, request *pluginapi.AllocateRe
 	var car pluginapi.ContainerAllocateResponse
 	var dev *pluginapi.DeviceSpec
 
-	p.devs = append(p.devs, &pluginapi.Device{
-		ID:     FUSEPath + strconv.Itoa(p.counter),
-		Health: pluginapi.Healthy,
-	})
-
 	glog.V(3).Infof("Allocated virtual fuse device %d", p.counter)
-
 	p.counter += 1
-	p.update <- message{}
 
 	car = pluginapi.ContainerAllocateResponse{}
 
