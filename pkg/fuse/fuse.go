@@ -76,7 +76,7 @@ func (p *FusePlugin) Allocate(ctx context.Context, request *pluginapi.AllocateRe
 	var car pluginapi.ContainerAllocateResponse
 	var dev *pluginapi.DeviceSpec
 
-	glog.V(3).Infof("Allocated virtual fuse device %d", p.counter)
+	glog.V(3).Infof("Allocated virtual fuse device %d (requested id: %s)", p.counter, request.ContainerRequests[0].DevicesIDs[0])
 	p.counter += 1
 
 	car = pluginapi.ContainerAllocateResponse{}
