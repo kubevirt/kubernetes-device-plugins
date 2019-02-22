@@ -8,7 +8,7 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"fmt"
 	"time"
-	"os/exec"
+	"syscall"
 )
 
 const (
@@ -51,9 +51,14 @@ func (FuseLister) NewPlugin(deviceID string) dpm.PluginInterface {
 // Ensure the fuse module is loaded
 func (p *FusePlugin) Start() error {
 	glog.V(3).Infof("Ensuring fuse kernel module is loaded")
-	cmd := exec.Command("modprobe", "fuse")
-	err := cmd.Run()
-
+	f, err := os.OpenFile(FUSEPath, os.O_RDWR, 0666)
+	if err == nil {
+		f.Close()
+		return nil
+	}
+	if e, ok := err.(*os.PathError); ok && (e.Err == syscall.ENODEV || e.Err == syscall.ENOENT) {
+		glog.Fatal("Fuse device not found, try 'modprobe fuse' first")
+	}
 	return err
 }
 
