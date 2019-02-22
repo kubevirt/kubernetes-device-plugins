@@ -8,6 +8,7 @@ import (
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
 	"fmt"
 	"time"
+	"os/exec"
 )
 
 const (
@@ -45,6 +46,15 @@ func (FuseLister) NewPlugin(deviceID string) dpm.PluginInterface {
 	glog.V(3).Infof("Creating device plugin %s", deviceID)
 
 	return &FusePlugin{}
+}
+
+// Ensure the fuse module is loaded
+func (p *FusePlugin) Start() error {
+	glog.V(3).Infof("Ensuring fuse kernel module is loaded")
+	cmd := exec.Command("modprobe", "fuse")
+	err := cmd.Run()
+
+	return err
 }
 
 func (p *FusePlugin) ListAndWatch(e *pluginapi.Empty, s pluginapi.DevicePlugin_ListAndWatchServer) error {
