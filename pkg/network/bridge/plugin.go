@@ -155,7 +155,7 @@ func (nbdp *NetworkBridgeDevicePlugin) Allocate(ctx context.Context, r *pluginap
 		envVarName := fmt.Sprintf("%s%s", envVarNamePrefix, strings.ToUpper(randString(envVarNameSuffixLen)))
 		marshalled, err := json.Marshal(vnicsPerInterface)
 		if err != nil {
-			glog.V(3).Info("Failed to marshal network interface description due to: %s", err.Error())
+			glog.V(3).Infof("Failed to marshal network interface description due to: %s", err.Error())
 			continue
 		}
 
@@ -211,7 +211,7 @@ func (nbdp *NetworkBridgeDevicePlugin) attachPods() {
 
 					containerPid, err := cli.GetPidByContainerID(containerID)
 					if err != nil {
-						glog.V(3).Info("Failed to obtain container's pid, due to: %s", err.Error())
+						glog.V(3).Infof("Failed to obtain container's pid, due to: %s", err.Error())
 						return false
 					}
 
