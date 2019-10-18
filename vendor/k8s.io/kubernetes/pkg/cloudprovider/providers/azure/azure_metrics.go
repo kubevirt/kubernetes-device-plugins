@@ -17,6 +17,7 @@ limitations under the License.
 package azure
 
 import (
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -45,16 +46,18 @@ type metricContext struct {
 func newMetricContext(prefix, request, resourceGroup, subscriptionID string) *metricContext {
 	return &metricContext{
 		start:      time.Now(),
-		attributes: []string{prefix + "_" + request, resourceGroup, subscriptionID},
+		attributes: []string{prefix + "_" + request, strings.ToLower(resourceGroup), subscriptionID},
 	}
 }
 
-func (mc *metricContext) Observe(err error) {
+func (mc *metricContext) Observe(err error) error {
 	apiMetrics.latency.WithLabelValues(mc.attributes...).Observe(
 		time.Since(mc.start).Seconds())
 	if err != nil {
 		apiMetrics.errors.WithLabelValues(mc.attributes...).Inc()
 	}
+
+	return err
 }
 
 func registerAPIMetrics(attributes ...string) *apiCallMetrics {

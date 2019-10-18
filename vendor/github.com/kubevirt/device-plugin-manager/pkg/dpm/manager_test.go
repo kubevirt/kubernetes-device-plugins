@@ -1,11 +1,11 @@
 package dpm_test
 
 import (
+	"github.com/kubevirt/device-plugin-manager/pkg/dpm"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"golang.org/x/net/context"
 	pluginapi "k8s.io/kubernetes/pkg/kubelet/apis/deviceplugin/v1beta1"
-	"kubevirt.io/device-plugin-manager/pkg/dpm"
 )
 
 // define a fake device plugin
