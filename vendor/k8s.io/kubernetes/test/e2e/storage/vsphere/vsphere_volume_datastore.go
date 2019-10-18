@@ -70,7 +70,7 @@ var _ = utils.SIGDescribe("Volume Provisioning on Datastore [Feature:vsphere]", 
 		scParameters[DiskFormat] = ThinDisk
 		err := invokeInvalidDatastoreTestNeg(client, namespace, scParameters)
 		Expect(err).To(HaveOccurred())
-		errorMsg := `Failed to provision volume with StorageClass \"` + DatastoreSCName + `\": The specified datastore ` + InvalidDatastore + ` is not a shared datastore across node VMs`
+		errorMsg := `Failed to provision volume with StorageClass \"` + DatastoreSCName + `\": Datastore ` + InvalidDatastore + ` not found`
 		if !strings.Contains(err.Error(), errorMsg) {
 			Expect(err).NotTo(HaveOccurred(), errorMsg)
 		}
@@ -79,12 +79,12 @@ var _ = utils.SIGDescribe("Volume Provisioning on Datastore [Feature:vsphere]", 
 
 func invokeInvalidDatastoreTestNeg(client clientset.Interface, namespace string, scParameters map[string]string) error {
 	By("Creating Storage Class With Invalid Datastore")
-	storageclass, err := client.StorageV1().StorageClasses().Create(getVSphereStorageClassSpec(DatastoreSCName, scParameters))
+	storageclass, err := client.StorageV1().StorageClasses().Create(getVSphereStorageClassSpec(DatastoreSCName, scParameters, nil))
 	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("Failed to create storage class with err: %v", err))
 	defer client.StorageV1().StorageClasses().Delete(storageclass.Name, nil)
 
 	By("Creating PVC using the Storage Class")
-	pvclaim, err := framework.CreatePVC(client, namespace, getVSphereClaimSpecWithStorageClassAnnotation(namespace, "2Gi", storageclass))
+	pvclaim, err := framework.CreatePVC(client, namespace, getVSphereClaimSpecWithStorageClass(namespace, "2Gi", storageclass))
 	Expect(err).NotTo(HaveOccurred())
 	defer framework.DeletePersistentVolumeClaim(client, pvclaim.Name, namespace)
 

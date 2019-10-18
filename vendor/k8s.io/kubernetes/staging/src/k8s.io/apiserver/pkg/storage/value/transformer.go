@@ -21,7 +21,14 @@ import (
 	"bytes"
 	"fmt"
 	"sync"
+	"time"
+
+	"k8s.io/apimachinery/pkg/util/errors"
 )
+
+func init() {
+	RegisterMetrics()
+}
 
 // Context is additional information that a storage transformation may need to verify the data at rest.
 type Context interface {
@@ -80,12 +87,18 @@ func (t *MutableTransformer) Set(transformer Transformer) {
 }
 
 func (t *MutableTransformer) TransformFromStorage(data []byte, context Context) (out []byte, stale bool, err error) {
+	defer func(start time.Time) {
+		RecordTransformation("from_storage", start, err)
+	}(time.Now())
 	t.lock.RLock()
 	transformer := t.transformer
 	t.lock.RUnlock()
 	return transformer.TransformFromStorage(data, context)
 }
 func (t *MutableTransformer) TransformToStorage(data []byte, context Context) (out []byte, err error) {
+	defer func(start time.Time) {
+		RecordTransformation("to_storage", start, err)
+	}(time.Now())
 	t.lock.RLock()
 	transformer := t.transformer
 	t.lock.RUnlock()
@@ -123,6 +136,7 @@ func NewPrefixTransformers(err error, transformers ...PrefixTransformer) Transfo
 // the result of transforming the value. It will always mark any transformation as stale that is not using
 // the first transformer.
 func (t *prefixTransformers) TransformFromStorage(data []byte, context Context) ([]byte, bool, error) {
+	var errs []error
 	for i, transformer := range t.transformers {
 		if bytes.HasPrefix(data, transformer.Prefix) {
 			result, stale, err := transformer.Transformer.TransformFromStorage(data[len(transformer.Prefix):], context)
@@ -133,8 +147,47 @@ func (t *prefixTransformers) TransformFromStorage(data []byte, context Context) 
 			if len(transformer.Prefix) == 0 && err != nil {
 				continue
 			}
+
+			// It is valid to have overlapping prefixes when the same encryption provider
+			// is specified multiple times but with different keys (the first provider is
+			// being rotated to and some later provider is being rotated away from).
+			//
+			// Example:
+			//
+			//  {
+			//    "aescbc": {
+			//      "keys": [
+			//        {
+			//          "name": "2",
+			//          "secret": "some key 2"
+			//        }
+			//      ]
+			//    }
+			//  },
+			//  {
+			//    "aescbc": {
+			//      "keys": [
+			//        {
+			//          "name": "1",
+			//          "secret": "some key 1"
+			//        }
+			//      ]
+			//    }
+			//  },
+			//
+			// The transformers for both aescbc configs share the prefix k8s:enc:aescbc:v1:
+			// but a failure in the first one should not prevent a later match from being attempted.
+			// Thus we never short-circuit on a prefix match that results in an error.
+			if err != nil {
+				errs = append(errs, err)
+				continue
+			}
+
 			return result, stale || i != 0, err
 		}
+	}
+	if err := errors.Reduce(errors.NewAggregate(errs)); err != nil {
+		return nil, false, err
 	}
 	return nil, false, t.err
 }

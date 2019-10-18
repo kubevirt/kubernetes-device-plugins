@@ -17,13 +17,20 @@ limitations under the License.
 package azure
 
 import (
+	"context"
 	"fmt"
+	"path"
+	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/arm/compute"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-03-01/compute"
 
 	"k8s.io/apimachinery/pkg/types"
 	kwait "k8s.io/apimachinery/pkg/util/wait"
+	cloudprovider "k8s.io/cloud-provider"
+	volerr "k8s.io/cloud-provider/volume/errors"
+	"k8s.io/klog"
+	"k8s.io/utils/keymutex"
 )
 
 const (
@@ -48,6 +55,9 @@ var defaultBackOff = kwait.Backoff{
 	Jitter:   0.0,
 }
 
+// acquire lock to attach/detach disk in one node
+var diskOpMutex = keymutex.NewHashed(0)
+
 type controllerCommon struct {
 	subscriptionID        string
 	location              string
@@ -56,119 +66,11 @@ type controllerCommon struct {
 	cloud                 *Cloud
 }
 
-// AttachDisk attaches a vhd to vm. The vhd must exist, can be identified by diskName, diskURI, and lun.
-func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI string, nodeName types.NodeName, lun int32, cachingMode compute.CachingTypes) error {
-	// 1. vmType is standard, attach with availabilitySet.AttachDisk.
+// getNodeVMSet gets the VMSet interface based on config.VMType and the real virtual machine type.
+func (c *controllerCommon) getNodeVMSet(nodeName types.NodeName) (VMSet, error) {
+	// 1. vmType is standard, return cloud.vmSet directly.
 	if c.cloud.VMType == vmTypeStandard {
-		return c.cloud.vmSet.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode)
-	}
-
-	// 2. vmType is Virtual Machine Scale Set (vmss), convert vmSet to scaleSet.
-	ss, ok := c.cloud.vmSet.(*scaleSet)
-	if !ok {
-		return fmt.Errorf("error of converting vmSet (%q) to scaleSet with vmType %q", c.cloud.vmSet, c.cloud.VMType)
-	}
-
-	// 3. If the node is managed by availability set, then attach with availabilitySet.AttachDisk.
-	managedByAS, err := ss.isNodeManagedByAvailabilitySet(mapNodeNameToVMName(nodeName))
-	if err != nil {
-		return err
-	}
-	if managedByAS {
-		// vm is managed by availability set.
-		return ss.availabilitySet.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode)
-	}
-
-	// 4. Node is managed by vmss, attach with scaleSet.AttachDisk.
-	return ss.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode)
-}
-
-// DetachDiskByName detaches a vhd from host. The vhd can be identified by diskName or diskURI.
-func (c *controllerCommon) DetachDiskByName(diskName, diskURI string, nodeName types.NodeName) error {
-	// 1. vmType is standard, detach with availabilitySet.DetachDiskByName.
-	if c.cloud.VMType == vmTypeStandard {
-		return c.cloud.vmSet.DetachDiskByName(diskName, diskURI, nodeName)
-	}
-
-	// 2. vmType is Virtual Machine Scale Set (vmss), convert vmSet to scaleSet.
-	ss, ok := c.cloud.vmSet.(*scaleSet)
-	if !ok {
-		return fmt.Errorf("error of converting vmSet (%q) to scaleSet with vmType %q", c.cloud.vmSet, c.cloud.VMType)
-	}
-
-	// 3. If the node is managed by availability set, then detach with availabilitySet.DetachDiskByName.
-	managedByAS, err := ss.isNodeManagedByAvailabilitySet(mapNodeNameToVMName(nodeName))
-	if err != nil {
-		return err
-	}
-	if managedByAS {
-		// vm is managed by availability set.
-		return ss.availabilitySet.DetachDiskByName(diskName, diskURI, nodeName)
-	}
-
-	// 4. Node is managed by vmss, detach with scaleSet.DetachDiskByName.
-	return ss.DetachDiskByName(diskName, diskURI, nodeName)
-}
-
-// GetDiskLun finds the lun on the host that the vhd is attached to, given a vhd's diskName and diskURI.
-func (c *controllerCommon) GetDiskLun(diskName, diskURI string, nodeName types.NodeName) (int32, error) {
-	// 1. vmType is standard, get with availabilitySet.GetDiskLun.
-	if c.cloud.VMType == vmTypeStandard {
-		return c.cloud.vmSet.GetDiskLun(diskName, diskURI, nodeName)
-	}
-
-	// 2. vmType is Virtual Machine Scale Set (vmss), convert vmSet to scaleSet.
-	ss, ok := c.cloud.vmSet.(*scaleSet)
-	if !ok {
-		return -1, fmt.Errorf("error of converting vmSet (%q) to scaleSet with vmType %q", c.cloud.vmSet, c.cloud.VMType)
-	}
-
-	// 3. If the node is managed by availability set, then get with availabilitySet.GetDiskLun.
-	managedByAS, err := ss.isNodeManagedByAvailabilitySet(mapNodeNameToVMName(nodeName))
-	if err != nil {
-		return -1, err
-	}
-	if managedByAS {
-		// vm is managed by availability set.
-		return ss.availabilitySet.GetDiskLun(diskName, diskURI, nodeName)
-	}
-
-	// 4. Node is managed by vmss, get with scaleSet.GetDiskLun.
-	return ss.GetDiskLun(diskName, diskURI, nodeName)
-}
-
-// GetNextDiskLun searches all vhd attachment on the host and find unused lun. Return -1 if all luns are used.
-func (c *controllerCommon) GetNextDiskLun(nodeName types.NodeName) (int32, error) {
-	// 1. vmType is standard, get with availabilitySet.GetNextDiskLun.
-	if c.cloud.VMType == vmTypeStandard {
-		return c.cloud.vmSet.GetNextDiskLun(nodeName)
-	}
-
-	// 2. vmType is Virtual Machine Scale Set (vmss), convert vmSet to scaleSet.
-	ss, ok := c.cloud.vmSet.(*scaleSet)
-	if !ok {
-		return -1, fmt.Errorf("error of converting vmSet (%q) to scaleSet with vmType %q", c.cloud.vmSet, c.cloud.VMType)
-	}
-
-	// 3. If the node is managed by availability set, then get with availabilitySet.GetNextDiskLun.
-	managedByAS, err := ss.isNodeManagedByAvailabilitySet(mapNodeNameToVMName(nodeName))
-	if err != nil {
-		return -1, err
-	}
-	if managedByAS {
-		// vm is managed by availability set.
-		return ss.availabilitySet.GetNextDiskLun(nodeName)
-	}
-
-	// 4. Node is managed by vmss, get with scaleSet.GetNextDiskLun.
-	return ss.GetNextDiskLun(nodeName)
-}
-
-// DisksAreAttached checks if a list of volumes are attached to the node with the specified NodeName.
-func (c *controllerCommon) DisksAreAttached(diskNames []string, nodeName types.NodeName) (map[string]bool, error) {
-	// 1. vmType is standard, check with availabilitySet.DisksAreAttached.
-	if c.cloud.VMType == vmTypeStandard {
-		return c.cloud.vmSet.DisksAreAttached(diskNames, nodeName)
+		return c.cloud.vmSet, nil
 	}
 
 	// 2. vmType is Virtual Machine Scale Set (vmss), convert vmSet to scaleSet.
@@ -177,16 +79,198 @@ func (c *controllerCommon) DisksAreAttached(diskNames []string, nodeName types.N
 		return nil, fmt.Errorf("error of converting vmSet (%q) to scaleSet with vmType %q", c.cloud.vmSet, c.cloud.VMType)
 	}
 
-	// 3. If the node is managed by availability set, then check with availabilitySet.DisksAreAttached.
+	// 3. If the node is managed by availability set, then return ss.availabilitySet.
 	managedByAS, err := ss.isNodeManagedByAvailabilitySet(mapNodeNameToVMName(nodeName))
 	if err != nil {
 		return nil, err
 	}
 	if managedByAS {
 		// vm is managed by availability set.
-		return ss.availabilitySet.DisksAreAttached(diskNames, nodeName)
+		return ss.availabilitySet, nil
 	}
 
-	// 4. Node is managed by vmss, check with scaleSet.DisksAreAttached.
-	return ss.DisksAreAttached(diskNames, nodeName)
+	// 4. Node is managed by vmss
+	return ss, nil
+}
+
+// AttachDisk attaches a vhd to vm. The vhd must exist, can be identified by diskName, diskURI.
+func (c *controllerCommon) AttachDisk(isManagedDisk bool, diskName, diskURI string, nodeName types.NodeName, cachingMode compute.CachingTypes) error {
+	if isManagedDisk {
+		diskName := path.Base(diskURI)
+		resourceGroup, err := getResourceGroupFromDiskURI(diskURI)
+		if err != nil {
+			return err
+		}
+
+		ctx, cancel := getContextWithCancel()
+		defer cancel()
+
+		disk, err := c.cloud.DisksClient.Get(ctx, resourceGroup, diskName)
+		if err != nil {
+			return err
+		}
+
+		if disk.ManagedBy != nil {
+			attachErr := fmt.Sprintf(
+				"disk(%s) already attached to node(%s), could not be attached to node(%s)",
+				diskURI, *disk.ManagedBy, nodeName)
+			attachedNode := path.Base(*disk.ManagedBy)
+			klog.V(2).Infof("found dangling volume %s attached to node %s", diskURI, attachedNode)
+			danglingErr := volerr.NewDanglingError(attachErr, types.NodeName(attachedNode), "")
+			return danglingErr
+		}
+	}
+
+	vmset, err := c.getNodeVMSet(nodeName)
+	if err != nil {
+		return err
+	}
+
+	instanceid, err := c.cloud.InstanceID(context.TODO(), nodeName)
+	if err != nil {
+		klog.Warningf("failed to get azure instance id (%v)", err)
+		return fmt.Errorf("failed to get azure instance id for node %q (%v)", nodeName, err)
+	}
+
+	diskOpMutex.LockKey(instanceid)
+	defer diskOpMutex.UnlockKey(instanceid)
+
+	lun, err := c.GetNextDiskLun(nodeName)
+	if err != nil {
+		klog.Warningf("no LUN available for instance %q (%v)", nodeName, err)
+		return fmt.Errorf("all LUNs are used, cannot attach volume (%s, %s) to instance %q (%v)", diskName, diskURI, instanceid, err)
+	}
+
+	klog.V(2).Infof("Trying to attach volume %q lun %d to node %q.", diskURI, lun, nodeName)
+	return vmset.AttachDisk(isManagedDisk, diskName, diskURI, nodeName, lun, cachingMode)
+}
+
+// DetachDisk detaches a disk from host. The vhd can be identified by diskName or diskURI.
+func (c *controllerCommon) DetachDisk(diskName, diskURI string, nodeName types.NodeName) error {
+	instanceid, err := c.cloud.InstanceID(context.TODO(), nodeName)
+	if err != nil {
+		if err == cloudprovider.InstanceNotFound {
+			// if host doesn't exist, no need to detach
+			klog.Warningf("azureDisk - failed to get azure instance id(%q), DetachDisk(%s) will assume disk is already detached",
+				nodeName, diskURI)
+			return nil
+		}
+		klog.Warningf("failed to get azure instance id (%v)", err)
+		return fmt.Errorf("failed to get azure instance id for node %q (%v)", nodeName, err)
+	}
+
+	vmset, err := c.getNodeVMSet(nodeName)
+	if err != nil {
+		return err
+	}
+
+	klog.V(2).Infof("detach %v from node %q", diskURI, nodeName)
+
+	// make the lock here as small as possible
+	diskOpMutex.LockKey(instanceid)
+	resp, err := vmset.DetachDisk(diskName, diskURI, nodeName)
+	diskOpMutex.UnlockKey(instanceid)
+
+	if c.cloud.CloudProviderBackoff && shouldRetryHTTPRequest(resp, err) {
+		klog.V(2).Infof("azureDisk - update backing off: detach disk(%s, %s), err: %v", diskName, diskURI, err)
+		retryErr := kwait.ExponentialBackoff(c.cloud.requestBackoff(), func() (bool, error) {
+			diskOpMutex.LockKey(instanceid)
+			resp, err := vmset.DetachDisk(diskName, diskURI, nodeName)
+			diskOpMutex.UnlockKey(instanceid)
+			return c.cloud.processHTTPRetryResponse(nil, "", resp, err)
+		})
+		if retryErr != nil {
+			err = retryErr
+			klog.V(2).Infof("azureDisk - update abort backoff: detach disk(%s, %s), err: %v", diskName, diskURI, err)
+		}
+	}
+	if err != nil {
+		klog.Errorf("azureDisk - detach disk(%s, %s) failed, err: %v", diskName, diskURI, err)
+	} else {
+		klog.V(2).Infof("azureDisk - detach disk(%s, %s) succeeded", diskName, diskURI)
+	}
+
+	return err
+}
+
+// getNodeDataDisks invokes vmSet interfaces to get data disks for the node.
+func (c *controllerCommon) getNodeDataDisks(nodeName types.NodeName) ([]compute.DataDisk, error) {
+	vmset, err := c.getNodeVMSet(nodeName)
+	if err != nil {
+		return nil, err
+	}
+
+	return vmset.GetDataDisks(nodeName)
+}
+
+// GetDiskLun finds the lun on the host that the vhd is attached to, given a vhd's diskName and diskURI.
+func (c *controllerCommon) GetDiskLun(diskName, diskURI string, nodeName types.NodeName) (int32, error) {
+	disks, err := c.getNodeDataDisks(nodeName)
+	if err != nil {
+		klog.Errorf("error of getting data disks for node %q: %v", nodeName, err)
+		return -1, err
+	}
+
+	for _, disk := range disks {
+		if disk.Lun != nil && (disk.Name != nil && diskName != "" && strings.EqualFold(*disk.Name, diskName)) ||
+			(disk.Vhd != nil && disk.Vhd.URI != nil && diskURI != "" && strings.EqualFold(*disk.Vhd.URI, diskURI)) ||
+			(disk.ManagedDisk != nil && strings.EqualFold(*disk.ManagedDisk.ID, diskURI)) {
+			// found the disk
+			klog.V(2).Infof("azureDisk - find disk: lun %d name %q uri %q", *disk.Lun, diskName, diskURI)
+			return *disk.Lun, nil
+		}
+	}
+	return -1, fmt.Errorf("Cannot find Lun for disk %s", diskName)
+}
+
+// GetNextDiskLun searches all vhd attachment on the host and find unused lun. Return -1 if all luns are used.
+func (c *controllerCommon) GetNextDiskLun(nodeName types.NodeName) (int32, error) {
+	disks, err := c.getNodeDataDisks(nodeName)
+	if err != nil {
+		klog.Errorf("error of getting data disks for node %q: %v", nodeName, err)
+		return -1, err
+	}
+
+	used := make([]bool, maxLUN)
+	for _, disk := range disks {
+		if disk.Lun != nil {
+			used[*disk.Lun] = true
+		}
+	}
+	for k, v := range used {
+		if !v {
+			return int32(k), nil
+		}
+	}
+	return -1, fmt.Errorf("all luns are used")
+}
+
+// DisksAreAttached checks if a list of volumes are attached to the node with the specified NodeName.
+func (c *controllerCommon) DisksAreAttached(diskNames []string, nodeName types.NodeName) (map[string]bool, error) {
+	attached := make(map[string]bool)
+	for _, diskName := range diskNames {
+		attached[diskName] = false
+	}
+
+	disks, err := c.getNodeDataDisks(nodeName)
+	if err != nil {
+		if err == cloudprovider.InstanceNotFound {
+			// if host doesn't exist, no need to detach
+			klog.Warningf("azureDisk - Cannot find node %q, DisksAreAttached will assume disks %v are not attached to it.",
+				nodeName, diskNames)
+			return attached, nil
+		}
+
+		return attached, err
+	}
+
+	for _, disk := range disks {
+		for _, diskName := range diskNames {
+			if disk.Name != nil && diskName != "" && strings.EqualFold(*disk.Name, diskName) {
+				attached[diskName] = true
+			}
+		}
+	}
+
+	return attached, nil
 }

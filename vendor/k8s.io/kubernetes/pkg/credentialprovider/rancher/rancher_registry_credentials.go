@@ -20,8 +20,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/rancher/go-rancher/client"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/credentialprovider"
 )
 
@@ -79,12 +79,12 @@ func (p *rancherProvider) Enabled() bool {
 }
 
 // LazyProvide implements DockerConfigProvider. Should never be called.
-func (p *rancherProvider) LazyProvide() *credentialprovider.DockerConfigEntry {
+func (p *rancherProvider) LazyProvide(image string) *credentialprovider.DockerConfigEntry {
 	return nil
 }
 
 // Provide implements DockerConfigProvider.Provide, refreshing Rancher tokens on demand
-func (p *rancherProvider) Provide() credentialprovider.DockerConfig {
+func (p *rancherProvider) Provide(image string) credentialprovider.DockerConfig {
 	cfg := credentialprovider.DockerConfig{}
 	for _, cred := range p.credGetter.getCredentials() {
 		entry := credentialprovider.DockerConfigEntry{
@@ -102,13 +102,13 @@ func (g *rancherCredentialsGetter) getCredentials() []registryCredential {
 	var registryCreds []registryCredential
 	credColl, err := g.client.RegistryCredential.List(client.NewListOpts())
 	if err != nil {
-		glog.Errorf("Failed to pull registry credentials from rancher %v", err)
+		klog.Errorf("Failed to pull registry credentials from rancher %v", err)
 		return registryCreds
 	}
 	for _, cred := range credColl.Data {
 		registry := &client.Registry{}
 		if err = g.client.GetLink(cred.Resource, "registry", registry); err != nil {
-			glog.Errorf("Failed to pull registry from rancher %v", err)
+			klog.Errorf("Failed to pull registry from rancher %v", err)
 			return registryCreds
 		}
 		registryCred := registryCredential{

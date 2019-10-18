@@ -59,6 +59,7 @@ var _ = utils.SIGDescribe("PersistentVolumes:vsphere", func() {
 	*/
 	BeforeEach(func() {
 		framework.SkipUnlessProviderIs("vsphere")
+		Bootstrap(f)
 		c = f.ClientSet
 		ns = f.Namespace.Name
 		clientPod = nil
@@ -87,11 +88,10 @@ var _ = utils.SIGDescribe("PersistentVolumes:vsphere", func() {
 				},
 				Prebind: nil,
 			}
+			emptyStorageClass := ""
 			pvcConfig = framework.PersistentVolumeClaimConfig{
-				Annotations: map[string]string{
-					v1.BetaStorageClassAnnotation: "",
-				},
-				Selector: selector,
+				Selector:         selector,
+				StorageClassName: &emptyStorageClass,
 			}
 		}
 		By("Creating the PV and PVC")
