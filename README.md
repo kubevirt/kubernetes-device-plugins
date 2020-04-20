@@ -1,3 +1,7 @@
+# This repository was archived
+
+Please read https://github.com/kubevirt/kubernetes-device-plugins/issues/64.
+
 # Collection of Kubernetes Device Plugins
 
 [![Build Status](https://travis-ci.org/kubevirt/kubernetes-device-plugins.svg?branch=master)](https://travis-ci.org/kubevirt/kubernetes-device-plugins)
